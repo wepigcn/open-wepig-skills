@@ -28,6 +28,9 @@ $BINDIR      = Join-Path $env:USERPROFILE ".local\bin"
 $PROJECT_DIR = $null
 $PROJECT_ENV_FILE = $null
 
+# 鉴权是否复用已有文件（$true=复用，$false=新输入/未复用）
+$script:AuthReused = $false
+
 # ---------- 输出辅助 ----------
 function Write-Cyan($msg)  { Write-Host $msg -ForegroundColor Cyan }
 function Write-Green($msg) { Write-Host $msg -ForegroundColor Green }
@@ -63,6 +66,35 @@ function Ask-Auth {
     Write-Err "SECRET 不能为空"
     $secure = Read-Host "OPEN_WEPIG_SECRET" -AsSecureString
     $script:Secret = [System.Net.NetworkCredential]::new("", $secure).Password
+  }
+  $env:OPEN_WEPIG_APPID = $script:AppId
+  $env:OPEN_WEPIG_SECRET = $script:Secret
+}
+
+function Collect-Auth {
+  $script:AuthReused = $false
+  if ($PROJECT_DIR) {
+    if (Test-Path $PROJECT_ENV_FILE) {
+      $reuse = Read-Host "检测到项目级鉴权文件，是否复用？[Y/n]"
+      if ($reuse -notmatch "^[Nn]$") {
+        Write-Green "复用已有项目级鉴权文件"
+        . $PROJECT_ENV_FILE
+        $script:AuthReused = $true
+        return
+      }
+    }
+    Ask-Auth
+  } else {
+    if (Test-Path $ENV_FILE) {
+      $reuse = Read-Host "检测到已有鉴权文件，是否复用？[Y/n]"
+      if ($reuse -notmatch "^[Nn]$") {
+        Write-Green "复用已有鉴权文件"
+        . $ENV_FILE
+        $script:AuthReused = $true
+        return
+      }
+    }
+    Ask-Auth
   }
 }
 
@@ -338,7 +370,6 @@ function Verify {
   }
   $envToSource = if ($PROJECT_DIR) { $PROJECT_ENV_FILE } else { $ENV_FILE }
   try {
-    . $envToSource
     $output = node $WES_ABS services 2>&1
     if ($LASTEXITCODE -eq 0) {
       Write-Green "鉴权与连通性正常"
@@ -346,10 +377,12 @@ function Verify {
       Write-Err "实测失败（appid/secret 错误、网络不通或网关未授权）："
       Write-Host $output
       Write-Yellow "修正：编辑 $envToSource 后重跑，或重新安装"
+      exit 1
     }
   } catch {
     Write-Err "实测失败：$_"
     Write-Yellow "修正：编辑 $envToSource 后重跑，或重新安装"
+    exit 1
   }
 }
 
@@ -375,36 +408,17 @@ function Ask-InstallScope {
 function Do-Install {
   Write-Cyan "open-wepig-skills 安装程序"
   Ask-InstallScope
-  if ($PROJECT_DIR) {
-    if (Test-Path $PROJECT_ENV_FILE) {
-      $reuse = Read-Host "检测到项目级鉴权文件，是否复用？[Y/n]"
-      if ($reuse -notmatch "^[Nn]$") {
-        Write-Green "复用已有项目级鉴权文件"
-        . $PROJECT_ENV_FILE
-      } else {
-        Ask-Auth
-        Write-ProjectEnv
-      }
-    } else {
-      Ask-Auth
-      Write-ProjectEnv
-    }
-  } else {
-    if (Test-Path $ENV_FILE) {
-      $reuse = Read-Host "检测到已有鉴权文件，是否复用？[Y/n]"
-      if ($reuse -notmatch "^[Nn]$") {
-        Write-Green "复用已有鉴权文件"
-        Migrate-Env
-      } else {
-        Ask-Auth
-        Write-Env
-      }
-    } else {
-      Ask-Auth
-      Write-Env
-    }
-  }
+  Collect-Auth
   Sync-Repo
+  Verify
+
+  # 实测通过后再写入 env，避免留下无效配置
+  if ($PROJECT_DIR) {
+    if (!$script:AuthReused) { Write-ProjectEnv }
+  } else {
+    if ($script:AuthReused) { Migrate-Env } else { Write-Env }
+  }
+
   Write-CLIWrapper
   Write-Host ""
   Write-Host "选择目标 harness（可多选，逗号分隔；输入 a 全选）："
@@ -425,7 +439,6 @@ function Do-Install {
       default { Write-Err "忽略未知选项: $s" }
     }
   }
-  Verify
   Write-Host ""
   Write-Green "安装完成。"
   if ($PROJECT_DIR) {
@@ -440,29 +453,21 @@ function Do-Install {
 # ---------- 更新流程 ----------
 function Do-Update {
   Write-Cyan "open-wepig-skills 更新"
+  Collect-Auth
   Sync-Repo
+  Verify
+
+  # 实测通过后再写入/迁移 env
   if ($PROJECT_DIR) {
-    if (Test-Path $PROJECT_ENV_FILE) {
-      $reuse = Read-Host "检测到项目级鉴权文件，是否复用？[Y/n]"
-      if ($reuse -notmatch "^[Nn]$") {
-        Write-Green "复用已有项目级鉴权文件"
-        . $PROJECT_ENV_FILE
-      } else {
-        Ask-Auth
-        Write-ProjectEnv
-      }
-    } else {
-      Ask-Auth
-      Write-ProjectEnv
-    }
+    if (!$script:AuthReused) { Write-ProjectEnv }
   } else {
-    Migrate-Env
+    if ($script:AuthReused) { Migrate-Env } else { Write-Env }
   }
+
   Write-CLIWrapper
   Write-Host ""
   Update-Claude; Update-Cursor; Update-Copilot; Update-Antigravity
   Update-Gemini; Update-Codex; Update-OpenCode
-  Verify
   Write-Host ""
   Write-Green "更新完成。"
   if ($PROJECT_DIR) {

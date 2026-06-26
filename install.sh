@@ -25,6 +25,9 @@ BINDIR="$HOME/.local/bin"
 PROJECT_DIR=""
 PROJECT_ENV_FILE=""
 
+# 鉴权是否复用已有文件（1=复用，0=新输入/未复用）
+AUTH_REUSED=0
+
 cyan()   { printf '\033[36m%s\033[0m\n' "$*"; }
 yellow() { printf '\033[33m%s\033[0m\n' "$*"; }
 green()  { printf '\033[32m%s\033[0m\n' "$*"; }
@@ -70,6 +73,35 @@ ask_auth() {
   while [[ -z "${SECRET//[[:space:]]/}" ]]; do
     err "SECRET 不能为空"; read_tty -rsp "OPEN_WEPIG_SECRET: " SECRET; echo
   done
+  export OPEN_WEPIG_APPID="$APPID" OPEN_WEPIG_SECRET="$SECRET"
+}
+
+# 收集鉴权：仅将 APPID/SECRET 载入当前 shell，不写入文件
+collect_auth() {
+  AUTH_REUSED=0
+  if [[ -n "$PROJECT_DIR" ]]; then
+    if [[ -f "$PROJECT_ENV_FILE" ]]; then
+      read_tty -rp "检测到项目级鉴权文件，是否复用？[Y/n] " reuse
+      if [[ ! "$reuse" =~ ^[Nn]$ ]]; then
+        green "复用已有项目级鉴权文件"
+        set -a; source "$PROJECT_ENV_FILE"; set +a
+        AUTH_REUSED=1
+        return
+      fi
+    fi
+    ask_auth
+  else
+    if [[ -f "$ENV_FILE" ]]; then
+      read_tty -rp "检测到已有鉴权文件，是否复用？[Y/n] " reuse
+      if [[ ! "$reuse" =~ ^[Nn]$ ]]; then
+        green "复用已有鉴权文件"
+        set -a; source "$ENV_FILE"; set +a
+        AUTH_REUSED=1
+        return
+      fi
+    fi
+    ask_auth
+  fi
 }
 
 ensure_env_path() {
@@ -355,14 +387,19 @@ verify() {
   [[ -n "$PROJECT_DIR" ]] && env_to_source="$PROJECT_ENV_FILE"
   if ! command -v node >/dev/null 2>&1; then
     yellow "未检测到 node，跳过实测。装好后执行：$CMD_NAME services"
-  elif ( source "$env_to_source" && node "$WES_ABS" services ) >"$log" 2>&1; then
-    green "鉴权与连通性正常"
-  else
-    err "实测失败（appid/secret 错误、网络不通或网关未授权）："
-    cat "$log" 2>/dev/null || true
-    yellow "修正：编辑 $env_to_source 后重跑，或重新安装"
+    rm -f "$log" 2>/dev/null || true
+    return 0
   fi
+  if node "$WES_ABS" services >"$log" 2>&1; then
+    green "鉴权与连通性正常"
+    rm -f "$log" 2>/dev/null || true
+    return 0
+  fi
+  err "实测失败（appid/secret 错误、网络不通或网关未授权）："
+  cat "$log" 2>/dev/null || true
+  yellow "修正：编辑 $env_to_source 后重跑，或重新安装"
   rm -f "$log" 2>/dev/null || true
+  return 1
 }
 
 # 交互式安装范围选择（命令行已传 --project 时跳过）
@@ -389,36 +426,23 @@ ask_install_scope() {
 do_install() {
   cyan "open-wepig-skills 安装程序"
   ask_install_scope
+  collect_auth
+  sync_repo
+  verify || exit 1
+
+  # 实测通过后再写入 env，避免留下无效配置
   if [[ -n "$PROJECT_DIR" ]]; then
-    if [[ -f "$PROJECT_ENV_FILE" ]]; then
-      read_tty -rp "检测到项目级鉴权文件，是否复用？[Y/n] " reuse
-      if [[ ! "$reuse" =~ ^[Nn]$ ]]; then
-        green "复用已有项目级鉴权文件"
-        set -a; source "$PROJECT_ENV_FILE"; set +a
-      else
-        ask_auth
-        write_project_env
-      fi
-    else
-      ask_auth
+    if [[ "$AUTH_REUSED" -eq 0 ]]; then
       write_project_env
     fi
   else
-    if [[ -f "$ENV_FILE" ]]; then
-      read_tty -rp "检测到已有鉴权文件，是否复用？[Y/n] " reuse
-      if [[ ! "$reuse" =~ ^[Nn]$ ]]; then
-        green "复用已有鉴权文件"
-        migrate_env
-      else
-        ask_auth
-        write_env
-      fi
+    if [[ "$AUTH_REUSED" -eq 1 ]]; then
+      migrate_env
     else
-      ask_auth
       write_env
     fi
   fi
-  sync_repo
+
   write_wepig_wrapper
   echo
   echo "选择目标 harness（可多选，逗号分隔；输入 a 全选）："
@@ -435,7 +459,6 @@ do_install() {
       7) install_opencode ;; *) err "忽略未知选项: $s" ;;
     esac
   done
-  verify
   echo; green "安装完成。"
   if [[ -n "$PROJECT_DIR" ]]; then
     echo "当前终端执行以下命令立即生效：source ${PROJECT_ENV_FILE}"
@@ -448,29 +471,27 @@ do_install() {
 # ---------- 更新流程 ----------
 do_update() {
   cyan "open-wepig-skills 更新"
+  collect_auth
   sync_repo
+  verify || exit 1
+
+  # 实测通过后再写入/迁移 env
   if [[ -n "$PROJECT_DIR" ]]; then
-    if [[ -f "$PROJECT_ENV_FILE" ]]; then
-      read_tty -rp "检测到项目级鉴权文件，是否复用？[Y/n] " reuse
-      if [[ ! "$reuse" =~ ^[Nn]$ ]]; then
-        green "复用已有项目级鉴权文件"
-        set -a; source "$PROJECT_ENV_FILE"; set +a
-      else
-        ask_auth
-        write_project_env
-      fi
-    else
-      ask_auth
+    if [[ "$AUTH_REUSED" -eq 0 ]]; then
       write_project_env
     fi
   else
-    migrate_env
+    if [[ "$AUTH_REUSED" -eq 1 ]]; then
+      migrate_env
+    else
+      write_env
+    fi
   fi
+
   write_wepig_wrapper
   echo
   update_claude; update_cursor; update_copilot; update_antigravity
   update_gemini; update_codex; update_opencode
-  verify
   echo; green "更新完成。"
   if [[ -n "$PROJECT_DIR" ]]; then
     echo "当前终端执行：source ${PROJECT_ENV_FILE}  刷新环境"
