@@ -65,7 +65,7 @@ write_env() {
 export OPEN_WEPIG_APPID="$APPID"
 export OPEN_WEPIG_SECRET="$SECRET"
 EOF
-  green "已写入 $ENV_FILE（权限 600）"
+  green "已写入 ${ENV_FILE}（权限 600）"
   local line='[ -f "$HOME/.open-wepig.env" ] && source "$HOME/.open-wepig.env"  # open-wepig-skills'
   for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
     touch "$rc"
@@ -131,7 +131,7 @@ install_gemini() {
 
 install_codex() {
   if ! command -v codex >/dev/null 2>&1; then
-    yellow "未检测到 codex。装好后执行：codex marketplace add $REPO_OWNER/$REPO_NAME，再在 /plugins 安装 open-wepig"; return
+    yellow "未检测到 codex。装好后执行：codex marketplace add $REPO_OWNER/${REPO_NAME}，再在 /plugins 安装 open-wepig"; return
   fi
   codex marketplace add "$REPO_OWNER/$REPO_NAME" || true
   green "Codex marketplace 已注册。请在 Codex CLI 的 /plugins 中安装 open-wepig"
@@ -230,7 +230,7 @@ clean_rc() {
     grep -qF '# open-wepig-skills' "$rc" || continue
     cp "$rc" "$rc.bak.open-wepig"
     if grep -vF '# open-wepig-skills' "$rc" > "$rc.tmp" && mv "$rc.tmp" "$rc"; then
-      green "已清理 $rc（备份 $rc.bak.open-wepig）"
+      green "已清理 ${rc}（备份 $rc.bak.open-wepig）"
     else
       rm -f "$rc.tmp"; yellow "$rc 清理失败，保留原文件"
     fi
@@ -310,11 +310,11 @@ do_uninstall() {
   clean_rc
 
   echo
-  read_tty -rp "是否删除 clone 目录 $INSTALL_DIR？[y/N] " delrepo
+  read_tty -rp "是否删除 clone 目录 ${INSTALL_DIR}？[y/N] " delrepo
   if [[ "$delrepo" =~ ^[Yy]$ ]]; then
     rm -rf "$INSTALL_DIR" && green "已删 $INSTALL_DIR"
   else
-    yellow "保留 clone 目录 $INSTALL_DIR（可手动 rm -rf 删除）"
+    yellow "保留 clone 目录 ${INSTALL_DIR}（可手动 rm -rf 删除）"
   fi
   echo; green "卸载完成。"
 }
