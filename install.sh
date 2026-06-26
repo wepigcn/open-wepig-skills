@@ -21,6 +21,10 @@ SKILL_SRC="$INSTALL_DIR/skills/$SKILL_NAME"
 WES_ABS="$INSTALL_DIR/scripts/open-cli.mjs"
 BINDIR="$HOME/.local/bin"
 
+# 项目级安装参数（由参数解析填充）
+PROJECT_DIR=""
+PROJECT_ENV_FILE=""
+
 cyan()   { printf '\033[36m%s\033[0m\n' "$*"; }
 yellow() { printf '\033[33m%s\033[0m\n' "$*"; }
 green()  { printf '\033[32m%s\033[0m\n' "$*"; }
@@ -39,10 +43,19 @@ read_tty() {
 
 usage() {
   cat <<EOF
-用法: bash install.sh [install|update|uninstall|--help]
+用法: bash install.sh [install|update|uninstall|--help] [--project [DIR]]
   install    交互式安装（默认）：鉴权 + 生成 open-wepig-cli 命令 + 装 harness + 实测
   update     拉取最新并同步到各已安装 harness
   uninstall  卸载：删命令、symlink、鉴权、shell 配置行（clone 目录可选）
+
+项目级安装：
+  bash install.sh install --project              # 安装到当前目录
+  bash install.sh install --project ./my-app     # 安装到指定项目
+  bash install.sh update --project ./my-app      # 更新项目级 harness
+  bash install.sh uninstall --project ./my-app   # 卸载项目级 harness
+
+说明：Claude Code / Cursor 支持项目级 skill；Copilot / Antigravity /
+      Gemini / Codex / OpenCode 本质为全局插件，项目模式下仍会安装但全局生效。
 EOF
 }
 
@@ -98,6 +111,16 @@ EOF
   fi
 }
 
+write_project_env() {
+  cat > "$PROJECT_ENV_FILE" <<EOF
+# open-wepig 鉴权，由 install.sh 生成（项目级）
+export OPEN_WEPIG_APPID="$APPID"
+export OPEN_WEPIG_SECRET="$SECRET"
+EOF
+  chmod 600 "$PROJECT_ENV_FILE"
+  green "已写入 ${PROJECT_ENV_FILE}（权限 600）"
+}
+
 migrate_env() {
   local old="$HOME/.open-wepig.env"
   local src_line='[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/open-wepig/env" ] && source "${XDG_CONFIG_HOME:-$HOME/.config}/open-wepig/env"  # open-wepig-skills'
@@ -139,10 +162,31 @@ sync_repo() {
 
 # ---------- 各平台安装 ----------
 link_skill() { mkdir -p "$1"; ln -sfn "$SKILL_SRC" "$1/$SKILL_NAME"; green "已链接 $1/$SKILL_NAME"; }
-install_claude() { link_skill "$HOME/.claude/skills"; }
-install_cursor() { link_skill "$HOME/.cursor/skills"; }
+
+# 项目模式下，非文件系统 harness 本质全局生效，给出提示
+global_harness_warning() {
+  if [[ -n "$PROJECT_DIR" ]]; then
+    yellow "注意：$1 为全局插件/扩展，不局限于此项目"
+  fi
+}
+
+install_claude() {
+  if [[ -n "$PROJECT_DIR" ]]; then
+    link_skill "$PROJECT_DIR/.claude/skills"
+  else
+    link_skill "$HOME/.claude/skills"
+  fi
+}
+install_cursor() {
+  if [[ -n "$PROJECT_DIR" ]]; then
+    link_skill "$PROJECT_DIR/.cursor/skills"
+  else
+    link_skill "$HOME/.cursor/skills"
+  fi
+}
 
 install_copilot() {
+  global_harness_warning "Copilot CLI"
   if ! command -v copilot >/dev/null 2>&1; then
     yellow "未检测到 copilot。装好后执行：copilot plugin marketplace add $REPO_OWNER/$REPO_NAME && copilot plugin install $SKILL_NAME@$MARKETPLACE_NAME"; return
   fi
@@ -152,6 +196,7 @@ install_copilot() {
 }
 
 install_antigravity() {
+  global_harness_warning "Antigravity"
   if ! command -v agy >/dev/null 2>&1; then
     yellow "未检测到 agy。装好后执行：agy plugin install $REPO_URL"; return
   fi
@@ -160,6 +205,7 @@ install_antigravity() {
 }
 
 install_gemini() {
+  global_harness_warning "Gemini CLI"
   if ! command -v gemini >/dev/null 2>&1; then
     yellow "未检测到 gemini。装好后执行：gemini extensions install $REPO_URL"; return
   fi
@@ -168,6 +214,7 @@ install_gemini() {
 }
 
 install_codex() {
+  global_harness_warning "Codex CLI"
   if ! command -v codex >/dev/null 2>&1; then
     yellow "未检测到 codex。装好后执行：codex marketplace add $REPO_OWNER/${REPO_NAME}，再在 /plugins 安装 open-wepig"; return
   fi
@@ -176,6 +223,7 @@ install_codex() {
 }
 
 install_opencode() {
+  global_harness_warning "OpenCode"
   local cfg="$HOME/.config/opencode/opencode.json"
   mkdir -p "$(dirname "$cfg")"
   [[ -s "$cfg" ]] || echo '{}' > "$cfg"
@@ -192,8 +240,20 @@ install_opencode() {
 }
 
 # ---------- 各平台更新 ----------
-update_claude() { [[ -e "$HOME/.claude/skills/$SKILL_NAME" ]] && green "Claude Code：symlink 随 repo pull 自动更新" || true; }
-update_cursor() { [[ -e "$HOME/.cursor/skills/$SKILL_NAME" ]] && green "Cursor：symlink 随 repo pull 自动更新" || true; }
+update_claude() {
+  if [[ -n "$PROJECT_DIR" ]]; then
+    [[ -e "$PROJECT_DIR/.claude/skills/$SKILL_NAME" ]] && green "Claude Code：项目级 symlink 随 repo pull 自动更新" || true
+  else
+    [[ -e "$HOME/.claude/skills/$SKILL_NAME" ]] && green "Claude Code：symlink 随 repo pull 自动更新" || true
+  fi
+}
+update_cursor() {
+  if [[ -n "$PROJECT_DIR" ]]; then
+    [[ -e "$PROJECT_DIR/.cursor/skills/$SKILL_NAME" ]] && green "Cursor：项目级 symlink 随 repo pull 自动更新" || true
+  else
+    [[ -e "$HOME/.cursor/skills/$SKILL_NAME" ]] && green "Cursor：symlink 随 repo pull 自动更新" || true
+  fi
+}
 
 update_copilot() {
   command -v copilot >/dev/null 2>&1 || return 0
@@ -222,8 +282,20 @@ update_opencode() {
 }
 
 # ---------- 各平台卸载 ----------
-uninstall_claude() { rm -f "$HOME/.claude/skills/$SKILL_NAME" 2>/dev/null && green "Claude Code：已删 symlink" || true; }
-uninstall_cursor() { rm -f "$HOME/.cursor/skills/$SKILL_NAME" 2>/dev/null && green "Cursor：已删 symlink" || true; }
+uninstall_claude() {
+  if [[ -n "$PROJECT_DIR" ]]; then
+    rm -f "$PROJECT_DIR/.claude/skills/$SKILL_NAME" 2>/dev/null && green "Claude Code：已删项目级 symlink" || true
+  else
+    rm -f "$HOME/.claude/skills/$SKILL_NAME" 2>/dev/null && green "Claude Code：已删 symlink" || true
+  fi
+}
+uninstall_cursor() {
+  if [[ -n "$PROJECT_DIR" ]]; then
+    rm -f "$PROJECT_DIR/.cursor/skills/$SKILL_NAME" 2>/dev/null && green "Cursor：已删项目级 symlink" || true
+  else
+    rm -f "$HOME/.cursor/skills/$SKILL_NAME" 2>/dev/null && green "Cursor：已删 symlink" || true
+  fi
+}
 
 uninstall_copilot() {
   command -v copilot >/dev/null 2>&1 || return 0
@@ -279,14 +351,16 @@ clean_rc() {
 verify() {
   cyan "验证鉴权与连通性..."
   local log; log="$(mktemp -t open-wepig-test)"
+  local env_to_source="$ENV_FILE"
+  [[ -n "$PROJECT_DIR" ]] && env_to_source="$PROJECT_ENV_FILE"
   if ! command -v node >/dev/null 2>&1; then
     yellow "未检测到 node，跳过实测。装好后执行：$CMD_NAME services"
-  elif ( source "$ENV_FILE" && node "$WES_ABS" services ) >"$log" 2>&1; then
+  elif ( source "$env_to_source" && node "$WES_ABS" services ) >"$log" 2>&1; then
     green "鉴权与连通性正常"
   else
     err "实测失败（appid/secret 错误、网络不通或网关未授权）："
     cat "$log" 2>/dev/null || true
-    yellow "修正：编辑 $ENV_FILE 后重跑，或重新安装"
+    yellow "修正：编辑 $env_to_source 后重跑，或重新安装"
   fi
   rm -f "$log" 2>/dev/null || true
 }
@@ -294,18 +368,34 @@ verify() {
 # ---------- 安装流程 ----------
 do_install() {
   cyan "open-wepig-skills 安装程序"
-  if [[ -f "$ENV_FILE" ]]; then
-    read_tty -rp "检测到已有鉴权文件，是否复用？[Y/n] " reuse
-    if [[ ! "$reuse" =~ ^[Nn]$ ]]; then
-      green "复用已有鉴权文件"
-      migrate_env
+  if [[ -n "$PROJECT_DIR" ]]; then
+    if [[ -f "$PROJECT_ENV_FILE" ]]; then
+      read_tty -rp "检测到项目级鉴权文件，是否复用？[Y/n] " reuse
+      if [[ ! "$reuse" =~ ^[Nn]$ ]]; then
+        green "复用已有项目级鉴权文件"
+        set -a; source "$PROJECT_ENV_FILE"; set +a
+      else
+        ask_auth
+        write_project_env
+      fi
+    else
+      ask_auth
+      write_project_env
+    fi
+  else
+    if [[ -f "$ENV_FILE" ]]; then
+      read_tty -rp "检测到已有鉴权文件，是否复用？[Y/n] " reuse
+      if [[ ! "$reuse" =~ ^[Nn]$ ]]; then
+        green "复用已有鉴权文件"
+        migrate_env
+      else
+        ask_auth
+        write_env
+      fi
     else
       ask_auth
       write_env
     fi
-  else
-    ask_auth
-    write_env
   fi
   sync_repo
   write_wepig_wrapper
@@ -326,54 +416,131 @@ do_install() {
   done
   verify
   echo; green "安装完成。"
-  echo "当前终端执行以下命令立即生效：source ${ENV_FILE}"
+  if [[ -n "$PROJECT_DIR" ]]; then
+    echo "当前终端执行以下命令立即生效：source ${PROJECT_ENV_FILE}"
+    echo "（项目级鉴权优先于全局 ~/.config/open-wepig/env）"
+  else
+    echo "当前终端执行以下命令立即生效：source ${ENV_FILE}"
+  fi
 }
 
 # ---------- 更新流程 ----------
 do_update() {
   cyan "open-wepig-skills 更新"
   sync_repo
-  migrate_env
+  if [[ -n "$PROJECT_DIR" ]]; then
+    if [[ -f "$PROJECT_ENV_FILE" ]]; then
+      read_tty -rp "检测到项目级鉴权文件，是否复用？[Y/n] " reuse
+      if [[ ! "$reuse" =~ ^[Nn]$ ]]; then
+        green "复用已有项目级鉴权文件"
+        set -a; source "$PROJECT_ENV_FILE"; set +a
+      else
+        ask_auth
+        write_project_env
+      fi
+    else
+      ask_auth
+      write_project_env
+    fi
+  else
+    migrate_env
+  fi
   write_wepig_wrapper
   echo
   update_claude; update_cursor; update_copilot; update_antigravity
   update_gemini; update_codex; update_opencode
   verify
   echo; green "更新完成。"
-  echo "如鉴权文件已迁移，当前终端执行：source ${ENV_FILE}  刷新环境"
+  if [[ -n "$PROJECT_DIR" ]]; then
+    echo "当前终端执行：source ${PROJECT_ENV_FILE}  刷新环境"
+  else
+    echo "如鉴权文件已迁移，当前终端执行：source ${ENV_FILE}  刷新环境"
+  fi
 }
 
 # ---------- 卸载流程 ----------
 do_uninstall() {
   cyan "open-wepig-skills 卸载"
-  echo "将删除："
-  echo "  - 命令 $BINDIR/$CMD_NAME"
-  echo "  - 各 harness 的 symlink / plugin 注册"
-  echo "  - 鉴权文件 $ENV_FILE"
-  echo "  - shell 配置里的 open-wepig-skills 行（~/.zshrc、~/.bashrc，保留 .bak 备份）"
+  if [[ -n "$PROJECT_DIR" ]]; then
+    echo "将删除项目级内容："
+    echo "  - $PROJECT_DIR/.claude/skills/$SKILL_NAME"
+    echo "  - $PROJECT_DIR/.cursor/skills/$SKILL_NAME"
+    echo "  - $PROJECT_ENV_FILE"
+    yellow "注意：Copilot / Antigravity / Gemini / Codex / OpenCode 为全局插件，将执行全局卸载"
+  else
+    echo "将删除："
+    echo "  - 命令 $BINDIR/$CMD_NAME"
+    echo "  - 各 harness 的 symlink / plugin 注册"
+    echo "  - 鉴权文件 $ENV_FILE"
+    echo "  - shell 配置里的 open-wepig-skills 行（~/.zshrc、~/.bashrc，保留 .bak 备份）"
+  fi
   read_tty -rp "确认卸载？[y/N] " confirm
   if [[ ! "$confirm" =~ ^[Yy]$ ]]; then yellow "已取消"; return; fi
 
-  rm -f "$BINDIR/$CMD_NAME" 2>/dev/null && green "已删命令 $BINDIR/$CMD_NAME" || true
-  uninstall_claude; uninstall_cursor; uninstall_copilot; uninstall_antigravity
-  uninstall_gemini; uninstall_codex; uninstall_opencode
-  rm -f "$ENV_FILE" "$HOME/.open-wepig.env" 2>/dev/null && green "已删 $ENV_FILE" || true
-  clean_rc
-
-  echo
-  read_tty -rp "是否删除 clone 目录 ${INSTALL_DIR}？[y/N] " delrepo
-  if [[ "$delrepo" =~ ^[Yy]$ ]]; then
-    rm -rf "$INSTALL_DIR" && green "已删 $INSTALL_DIR"
+  if [[ -n "$PROJECT_DIR" ]]; then
+    uninstall_claude; uninstall_cursor
+    rm -f "$PROJECT_ENV_FILE" 2>/dev/null && green "已删 $PROJECT_ENV_FILE" || true
+    uninstall_copilot; uninstall_antigravity; uninstall_gemini; uninstall_codex; uninstall_opencode
   else
-    yellow "保留 clone 目录 ${INSTALL_DIR}（可手动 rm -rf 删除）"
+    rm -f "$BINDIR/$CMD_NAME" 2>/dev/null && green "已删命令 $BINDIR/$CMD_NAME" || true
+    uninstall_claude; uninstall_cursor; uninstall_copilot; uninstall_antigravity
+    uninstall_gemini; uninstall_codex; uninstall_opencode
+    rm -f "$ENV_FILE" "$HOME/.open-wepig.env" 2>/dev/null && green "已删 $ENV_FILE" || true
+    clean_rc
+
+    echo
+    read_tty -rp "是否删除 clone 目录 ${INSTALL_DIR}？[y/N] " delrepo
+    if [[ "$delrepo" =~ ^[Yy]$ ]]; then
+      rm -rf "$INSTALL_DIR" && green "已删 $INSTALL_DIR"
+    else
+      yellow "保留 clone 目录 ${INSTALL_DIR}（可手动 rm -rf 删除）"
+    fi
   fi
   echo; green "卸载完成。"
 }
 
-case "${1:-install}" in
-  install|"") do_install ;;
+# ---------- 参数解析 ----------
+parse_args() {
+  ACTION=""
+  PROJECT_DIR=""
+  local args=("$@")
+  local i=0
+  while [[ $i -lt ${#args[@]} ]]; do
+    local arg="${args[$i]}"
+    case "$arg" in
+      --project)
+        i=$((i+1))
+        if [[ $i -lt ${#args[@]} ]]; then
+          local next="${args[$i]}"
+          if [[ "$next" == install || "$next" == update || "$next" == uninstall || "$next" == -h || "$next" == --help || "$next" == -* ]]; then
+            PROJECT_DIR="."
+          else
+            PROJECT_DIR="$next"
+            i=$((i+1))
+          fi
+        else
+          PROJECT_DIR="."
+        fi
+        ;;
+      -h|--help) ACTION="--help"; i=$((i+1)) ;;
+      install|update|uninstall) ACTION="$arg"; i=$((i+1)) ;;
+      *) err "未知参数: $arg"; usage; exit 1 ;;
+    esac
+  done
+  [[ -z "$ACTION" ]] && ACTION="install"
+  if [[ -n "$PROJECT_DIR" ]]; then
+    mkdir -p "$PROJECT_DIR" || { err "无法创建项目目录: $PROJECT_DIR"; exit 1; }
+    PROJECT_DIR="$(cd "$PROJECT_DIR" && pwd)" || { err "无法进入项目目录: $PROJECT_DIR"; exit 1; }
+    PROJECT_ENV_FILE="$PROJECT_DIR/.open-wepig.env"
+  fi
+}
+
+parse_args "$@"
+
+case "$ACTION" in
+  install) do_install ;;
   update) do_update ;;
   uninstall) do_uninstall ;;
   -h|--help) usage ;;
-  *) err "未知参数: $1"; usage; exit 1 ;;
+  *) err "未知参数: $ACTION"; usage; exit 1 ;;
 esac

@@ -24,6 +24,10 @@ $SKILL_SRC   = Join-Path $INSTALL_DIR "skills\$SKILL_NAME"
 $WES_ABS     = Join-Path $INSTALL_DIR "scripts\open-cli.mjs"
 $BINDIR      = Join-Path $env:USERPROFILE ".local\bin"
 
+# 项目级安装参数（由参数解析填充）
+$PROJECT_DIR = $null
+$PROJECT_ENV_FILE = $null
+
 # ---------- 输出辅助 ----------
 function Write-Cyan($msg)  { Write-Host $msg -ForegroundColor Cyan }
 function Write-Green($msg) { Write-Host $msg -ForegroundColor Green }
@@ -31,10 +35,19 @@ function Write-Yellow($msg){ Write-Host $msg -ForegroundColor Yellow }
 function Write-Err($msg)   { Write-Host $msg -ForegroundColor Red -ErrorAction Continue }
 
 function Usage {
-  Write-Host "用法: powershell -File install.ps1 [install|update|uninstall|--help]"
+  Write-Host "用法: powershell -File install.ps1 [install|update|uninstall|--help] [--project [DIR]]"
   Write-Host "  install    交互式安装（默认）：鉴权 + 生成 open-wepig-cli 命令 + 装 harness + 实测"
   Write-Host "  update     拉取最新并同步到各已安装 harness"
   Write-Host "  uninstall  卸载：删命令、链接、鉴权、profile 配置行（clone 目录可选）"
+  Write-Host ""
+  Write-Host "项目级安装："
+  Write-Host "  powershell -File install.ps1 install --project                 # 安装到当前目录"
+  Write-Host "  powershell -File install.ps1 install --project ./my-app        # 安装到指定项目"
+  Write-Host "  powershell -File install.ps1 update --project ./my-app         # 更新项目级 harness"
+  Write-Host "  powershell -File install.ps1 uninstall --project ./my-app      # 卸载项目级 harness"
+  Write-Host ""
+  Write-Host "说明：Claude Code / Cursor 支持项目级 skill；Copilot / Antigravity /"
+  Write-Host "      Gemini / Codex / OpenCode 本质为全局插件，项目模式下仍会安装但全局生效。"
 }
 
 # ---------- 鉴权 ----------
@@ -94,6 +107,16 @@ function Migrate-Env {
   Update-ProfileLine "open-wepig\env" $srcLine
 }
 
+function Write-ProjectEnv {
+  $envContent = @"
+# open-wepig 鉴权，由 install.ps1 生成（项目级）
+`$env:OPEN_WEPIG_APPID = "$script:AppId"
+`$env:OPEN_WEPIG_SECRET = "$script:Secret"
+"@
+  $envContent | Set-Content -Path $PROJECT_ENV_FILE -Encoding UTF8
+  Write-Green "已写入 $PROJECT_ENV_FILE"
+}
+
 # ---------- 生成 open-wepig-cli 命令 ----------
 function Write-CLIWrapper {
   New-Item -ItemType Directory -Path $BINDIR -Force | Out-Null
@@ -124,10 +147,25 @@ function Link-Skill($targetDir) {
   New-Item -ItemType Junction -Path $target -Target $SKILL_SRC | Out-Null
   Write-Green "已链接 $target"
 }
-function Install-Claude { Link-Skill (Join-Path $env:USERPROFILE ".claude\skills") }
-function Install-Cursor  { Link-Skill (Join-Path $env:USERPROFILE ".cursor\skills") }
+
+# 项目模式下，非文件系统 harness 本质全局生效，给出提示
+function Global-HarnessWarning($name) {
+  if ($PROJECT_DIR) {
+    Write-Yellow "注意：$name 为全局插件/扩展，不局限于此项目"
+  }
+}
+
+function Install-Claude {
+  if ($PROJECT_DIR) { Link-Skill (Join-Path $PROJECT_DIR ".claude\skills") }
+  else { Link-Skill (Join-Path $env:USERPROFILE ".claude\skills") }
+}
+function Install-Cursor {
+  if ($PROJECT_DIR) { Link-Skill (Join-Path $PROJECT_DIR ".cursor\skills") }
+  else { Link-Skill (Join-Path $env:USERPROFILE ".cursor\skills") }
+}
 
 function Install-Copilot {
+  Global-HarnessWarning "Copilot CLI"
   if (!(Get-Command copilot -ErrorAction SilentlyContinue)) {
     Write-Yellow "未检测到 copilot。装好后执行：copilot plugin marketplace add $REPO_OWNER/$REPO_NAME && copilot plugin install $SKILL_NAME@$MARKETPLACE_NAME"
     return
@@ -138,6 +176,7 @@ function Install-Copilot {
 }
 
 function Install-Antigravity {
+  Global-HarnessWarning "Antigravity"
   if (!(Get-Command agy -ErrorAction SilentlyContinue)) {
     Write-Yellow "未检测到 agy。装好后执行：agy plugin install $REPO_URL"; return
   }
@@ -146,6 +185,7 @@ function Install-Antigravity {
 }
 
 function Install-Gemini {
+  Global-HarnessWarning "Gemini CLI"
   if (!(Get-Command gemini -ErrorAction SilentlyContinue)) {
     Write-Yellow "未检测到 gemini。装好后执行：gemini extensions install $REPO_URL"; return
   }
@@ -154,6 +194,7 @@ function Install-Gemini {
 }
 
 function Install-Codex {
+  Global-HarnessWarning "Codex CLI"
   if (!(Get-Command codex -ErrorAction SilentlyContinue)) {
     Write-Yellow "未检测到 codex。装好后执行：codex marketplace add $REPO_OWNER/$REPO_NAME，再在 /plugins 安装 open-wepig"; return
   }
@@ -162,6 +203,7 @@ function Install-Codex {
 }
 
 function Install-OpenCode {
+  Global-HarnessWarning "OpenCode"
   $cfg = Join-Path $env:USERPROFILE ".config\opencode\opencode.json"
   $cfgDir = Split-Path $cfg -Parent
   if (!(Test-Path $cfgDir)) { New-Item -ItemType Directory -Path $cfgDir -Force | Out-Null }
@@ -181,8 +223,16 @@ function Install-OpenCode {
 }
 
 # ---------- 各平台更新 ----------
-function Update-Claude { if (Test-Path (Join-Path $env:USERPROFILE ".claude\skills\$SKILL_NAME")) { Write-Green "Claude Code：junction 随 repo pull 自动更新" } }
-function Update-Cursor  { if (Test-Path (Join-Path $env:USERPROFILE ".cursor\skills\$SKILL_NAME")) { Write-Green "Cursor：junction 随 repo pull 自动更新" } }
+function Update-Claude {
+  $base = if ($PROJECT_DIR) { $PROJECT_DIR } else { $env:USERPROFILE }
+  $prefix = if ($PROJECT_DIR) { "项目级 " } else { "" }
+  if (Test-Path (Join-Path $base ".claude\skills\$SKILL_NAME")) { Write-Green "Claude Code：${prefix}junction 随 repo pull 自动更新" }
+}
+function Update-Cursor {
+  $base = if ($PROJECT_DIR) { $PROJECT_DIR } else { $env:USERPROFILE }
+  $prefix = if ($PROJECT_DIR) { "项目级 " } else { "" }
+  if (Test-Path (Join-Path $base ".cursor\skills\$SKILL_NAME")) { Write-Green "Cursor：${prefix}junction 随 repo pull 自动更新" }
+}
 
 function Update-Copilot {
   if (!(Get-Command copilot -ErrorAction SilentlyContinue)) { return }
@@ -212,8 +262,26 @@ function Update-OpenCode {
 }
 
 # ---------- 各平台卸载 ----------
-function Uninstall-Claude { $p = Join-Path $env:USERPROFILE ".claude\skills\$SKILL_NAME"; if (Test-Path $p) { cmd /c rmdir "$p" 2>$null; Remove-Item $p -Force -ErrorAction SilentlyContinue; Write-Green "Claude Code：已删链接" } }
-function Uninstall-Cursor  { $p = Join-Path $env:USERPROFILE ".cursor\skills\$SKILL_NAME"; if (Test-Path $p) { cmd /c rmdir "$p" 2>$null; Remove-Item $p -Force -ErrorAction SilentlyContinue; Write-Green "Cursor：已删链接" } }
+function Uninstall-Claude {
+  $base = if ($PROJECT_DIR) { $PROJECT_DIR } else { $env:USERPROFILE }
+  $p = Join-Path $base ".claude\skills\$SKILL_NAME"
+  if (Test-Path $p) {
+    cmd /c rmdir "$p" 2>$null
+    Remove-Item $p -Force -ErrorAction SilentlyContinue
+    $prefix = if ($PROJECT_DIR) { "项目级 " } else { "" }
+    Write-Green "Claude Code：已删${prefix}链接"
+  }
+}
+function Uninstall-Cursor {
+  $base = if ($PROJECT_DIR) { $PROJECT_DIR } else { $env:USERPROFILE }
+  $p = Join-Path $base ".cursor\skills\$SKILL_NAME"
+  if (Test-Path $p) {
+    cmd /c rmdir "$p" 2>$null
+    Remove-Item $p -Force -ErrorAction SilentlyContinue
+    $prefix = if ($PROJECT_DIR) { "项目级 " } else { "" }
+    Write-Green "Cursor：已删${prefix}链接"
+  }
+}
 
 function Uninstall-Copilot {
   if (!(Get-Command copilot -ErrorAction SilentlyContinue)) { return }
@@ -268,37 +336,54 @@ function Verify {
     Write-Yellow "未检测到 node，跳过实测。装好后执行：$CMD_NAME services"
     return
   }
+  $envToSource = if ($PROJECT_DIR) { $PROJECT_ENV_FILE } else { $ENV_FILE }
   try {
-    . $ENV_FILE
+    . $envToSource
     $output = node $WES_ABS services 2>&1
     if ($LASTEXITCODE -eq 0) {
       Write-Green "鉴权与连通性正常"
     } else {
       Write-Err "实测失败（appid/secret 错误、网络不通或网关未授权）："
       Write-Host $output
-      Write-Yellow "修正：编辑 $ENV_FILE 后重跑，或重新安装"
+      Write-Yellow "修正：编辑 $envToSource 后重跑，或重新安装"
     }
   } catch {
     Write-Err "实测失败：$_"
-    Write-Yellow "修正：编辑 $ENV_FILE 后重跑，或重新安装"
+    Write-Yellow "修正：编辑 $envToSource 后重跑，或重新安装"
   }
 }
 
 # ---------- 安装流程 ----------
 function Do-Install {
   Write-Cyan "open-wepig-skills 安装程序"
-  if (Test-Path $ENV_FILE) {
-    $reuse = Read-Host "检测到已有鉴权文件，是否复用？[Y/n]"
-    if ($reuse -notmatch "^[Nn]$") {
-      Write-Green "复用已有鉴权文件"
-      Migrate-Env
+  if ($PROJECT_DIR) {
+    if (Test-Path $PROJECT_ENV_FILE) {
+      $reuse = Read-Host "检测到项目级鉴权文件，是否复用？[Y/n]"
+      if ($reuse -notmatch "^[Nn]$") {
+        Write-Green "复用已有项目级鉴权文件"
+        . $PROJECT_ENV_FILE
+      } else {
+        Ask-Auth
+        Write-ProjectEnv
+      }
+    } else {
+      Ask-Auth
+      Write-ProjectEnv
+    }
+  } else {
+    if (Test-Path $ENV_FILE) {
+      $reuse = Read-Host "检测到已有鉴权文件，是否复用？[Y/n]"
+      if ($reuse -notmatch "^[Nn]$") {
+        Write-Green "复用已有鉴权文件"
+        Migrate-Env
+      } else {
+        Ask-Auth
+        Write-Env
+      }
     } else {
       Ask-Auth
       Write-Env
     }
-  } else {
-    Ask-Auth
-    Write-Env
   }
   Sync-Repo
   Write-CLIWrapper
@@ -324,15 +409,36 @@ function Do-Install {
   Verify
   Write-Host ""
   Write-Green "安装完成。"
-  Write-Host "当前终端执行以下命令立即生效：. $ENV_FILE"
-  Write-Host "或新开终端后即可用 $CMD_NAME 命令（如 $CMD_NAME services）。"
+  if ($PROJECT_DIR) {
+    Write-Host "当前终端执行以下命令立即生效：. $PROJECT_ENV_FILE"
+    Write-Host "（项目级鉴权优先于全局 `$env:USERPROFILE\.config\open-wepig\env.ps1）"
+  } else {
+    Write-Host "当前终端执行以下命令立即生效：. $ENV_FILE"
+    Write-Host "或新开终端后即可用 $CMD_NAME 命令（如 $CMD_NAME services）。"
+  }
 }
 
 # ---------- 更新流程 ----------
 function Do-Update {
   Write-Cyan "open-wepig-skills 更新"
   Sync-Repo
-  Migrate-Env
+  if ($PROJECT_DIR) {
+    if (Test-Path $PROJECT_ENV_FILE) {
+      $reuse = Read-Host "检测到项目级鉴权文件，是否复用？[Y/n]"
+      if ($reuse -notmatch "^[Nn]$") {
+        Write-Green "复用已有项目级鉴权文件"
+        . $PROJECT_ENV_FILE
+      } else {
+        Ask-Auth
+        Write-ProjectEnv
+      }
+    } else {
+      Ask-Auth
+      Write-ProjectEnv
+    }
+  } else {
+    Migrate-Env
+  }
   Write-CLIWrapper
   Write-Host ""
   Update-Claude; Update-Cursor; Update-Copilot; Update-Antigravity
@@ -340,45 +446,95 @@ function Do-Update {
   Verify
   Write-Host ""
   Write-Green "更新完成。"
-  Write-Host "如鉴权文件已迁移，当前终端执行：. $ENV_FILE  刷新环境"
+  if ($PROJECT_DIR) {
+    Write-Host "当前终端执行：. $PROJECT_ENV_FILE  刷新环境"
+  } else {
+    Write-Host "如鉴权文件已迁移，当前终端执行：. $ENV_FILE  刷新环境"
+  }
 }
 
 # ---------- 卸载流程 ----------
 function Do-Uninstall {
   Write-Cyan "open-wepig-skills 卸载"
-  Write-Host "将删除："
-  Write-Host "  - 命令 $(Join-Path $BINDIR "$CMD_NAME.cmd")"
-  Write-Host "  - 各 harness 的链接 / plugin 注册"
-  Write-Host "  - 鉴权文件 $ENV_FILE"
-  Write-Host "  - PowerShell profile 里的 open-wepig-skills 行（保留 .bak 备份）"
+  if ($PROJECT_DIR) {
+    Write-Host "将删除项目级内容："
+    Write-Host "  - $(Join-Path $PROJECT_DIR ".claude\skills\$SKILL_NAME")"
+    Write-Host "  - $(Join-Path $PROJECT_DIR ".cursor\skills\$SKILL_NAME")"
+    Write-Host "  - $PROJECT_ENV_FILE"
+    Write-Yellow "注意：Copilot / Antigravity / Gemini / Codex / OpenCode 为全局插件，将执行全局卸载"
+  } else {
+    Write-Host "将删除："
+    Write-Host "  - 命令 $(Join-Path $BINDIR "$CMD_NAME.cmd")"
+    Write-Host "  - 各 harness 的链接 / plugin 注册"
+    Write-Host "  - 鉴权文件 $ENV_FILE"
+    Write-Host "  - PowerShell profile 里的 open-wepig-skills 行（保留 .bak 备份）"
+  }
   $confirm = Read-Host "确认卸载？[y/N]"
   if ($confirm -notmatch "^[Yy]$") { Write-Yellow "已取消"; return }
 
-  $cmdPath = Join-Path $BINDIR "$CMD_NAME.cmd"
-  if (Test-Path $cmdPath) { Remove-Item $cmdPath -Force; Write-Green "已删命令 $cmdPath" }
-  Uninstall-Claude; Uninstall-Cursor; Uninstall-Copilot; Uninstall-Antigravity
-  Uninstall-Gemini; Uninstall-Codex; Uninstall-OpenCode
-  if (Test-Path $ENV_FILE) { Remove-Item $ENV_FILE -Force; Write-Green "已删 $ENV_FILE" }
-  Clean-Profile
-
-  Write-Host ""
-  $delrepo = Read-Host "是否删除 clone 目录 $INSTALL_DIR？[y/N]"
-  if ($delrepo -match "^[Yy]$") {
-    Remove-Item $INSTALL_DIR -Recurse -Force; Write-Green "已删 $INSTALL_DIR"
+  if ($PROJECT_DIR) {
+    Uninstall-Claude; Uninstall-Cursor
+    if (Test-Path $PROJECT_ENV_FILE) { Remove-Item $PROJECT_ENV_FILE -Force; Write-Green "已删 $PROJECT_ENV_FILE" }
+    Uninstall-Copilot; Uninstall-Antigravity; Uninstall-Gemini; Uninstall-Codex; Uninstall-OpenCode
   } else {
-    Write-Yellow "保留 clone 目录 $INSTALL_DIR（可手动删除）"
+    $cmdPath = Join-Path $BINDIR "$CMD_NAME.cmd"
+    if (Test-Path $cmdPath) { Remove-Item $cmdPath -Force; Write-Green "已删命令 $cmdPath" }
+    Uninstall-Claude; Uninstall-Cursor; Uninstall-Copilot; Uninstall-Antigravity
+    Uninstall-Gemini; Uninstall-Codex; Uninstall-OpenCode
+    if (Test-Path $ENV_FILE) { Remove-Item $ENV_FILE -Force; Write-Green "已删 $ENV_FILE" }
+    Clean-Profile
+
+    Write-Host ""
+    $delrepo = Read-Host "是否删除 clone 目录 $INSTALL_DIR？[y/N]"
+    if ($delrepo -match "^[Yy]$") {
+      Remove-Item $INSTALL_DIR -Recurse -Force; Write-Green "已删 $INSTALL_DIR"
+    } else {
+      Write-Yellow "保留 clone 目录 $INSTALL_DIR（可手动删除）"
+    }
   }
   Write-Host ""
   Write-Green "卸载完成。"
 }
 
 # ---------- 主入口 ----------
-$action = if ($args.Count -gt 0) { $args[0] } else { "install" }
-switch ($action) {
+$script:ACTION = $null
+$script:PROJECT_DIR = $null
+$i = 0
+while ($i -lt $args.Count) {
+  $arg = $args[$i]
+  if ($arg -eq "--project") {
+    $i++
+    if ($i -lt $args.Count) {
+      $next = $args[$i]
+      if ($next -in @("install","update","uninstall","--help","-h") -or $next.StartsWith("-")) {
+        $script:PROJECT_DIR = (Get-Location).Path
+      } else {
+        $script:PROJECT_DIR = $next
+        $i++
+      }
+    } else {
+      $script:PROJECT_DIR = (Get-Location).Path
+    }
+  } elseif ($arg -in @("-h","--help")) {
+    $script:ACTION = "--help"; $i++
+  } elseif ($arg -in @("install","update","uninstall")) {
+    $script:ACTION = $arg; $i++
+  } else {
+    Write-Err "未知参数: $arg"; Usage; exit 1
+  }
+}
+if (-not $script:ACTION) { $script:ACTION = "install" }
+if ($script:PROJECT_DIR) {
+  if (!(Test-Path $script:PROJECT_DIR)) { New-Item -ItemType Directory -Path $script:PROJECT_DIR -Force | Out-Null }
+  $script:PROJECT_DIR = (Resolve-Path $script:PROJECT_DIR).Path
+  $script:PROJECT_ENV_FILE = Join-Path $script:PROJECT_DIR ".open-wepig.env.ps1"
+}
+
+switch ($script:ACTION) {
   "install"   { Do-Install }
   "update"    { Do-Update }
   "uninstall" { Do-Uninstall }
   "-h"        { Usage }
   "--help"    { Usage }
-  default     { Write-Err "未知参数: $action"; Usage }
+  default     { Write-Err "未知参数: $script:ACTION"; Usage }
 }
