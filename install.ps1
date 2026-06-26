@@ -100,7 +100,6 @@ function Write-CLIWrapper {
   $wrapper = "@echo off`r`nnode `"$WES_ABS`" %*"
   $cmdPath = Join-Path $BINDIR "$CMD_NAME.cmd"
   Set-Content -Path $cmdPath -Value $wrapper -Encoding ASCII
-  Write-Green "已生成命令 $cmdPath"
   $pathLine = '$env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"  # open-wepig-skills'
   Update-ProfileLine ".local\bin" $pathLine
 }
@@ -288,9 +287,8 @@ function Verify {
 # ---------- 安装流程 ----------
 function Do-Install {
   Write-Cyan "open-wepig-skills 安装程序"
-  Write-Host "安装目录: $INSTALL_DIR"
   if (Test-Path $ENV_FILE) {
-    $reuse = Read-Host "检测到已有鉴权文件 $ENV_FILE，是否复用？[Y/n]"
+    $reuse = Read-Host "检测到已有鉴权文件，是否复用？[Y/n]"
     if ($reuse -notmatch "^[Nn]$") {
       Write-Green "复用已有鉴权文件"
       Migrate-Env

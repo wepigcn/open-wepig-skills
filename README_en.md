@@ -27,7 +27,7 @@ irm https://raw.githubusercontent.com/wepigcn/open-wepig-skills/main/install.ps1
 /plugin install open-wepig@open-wepig-skills
 ```
 
-> The marketplace install only lets Claude Code recognize the skill. You still need to run Option 1 to configure authentication and the `open-wepig-cli` command.
+> The marketplace install only lets Claude Code recognize the skill. You still need to run Option 1 to configure authentication.
 
 ### Option 3: Manual clone
 

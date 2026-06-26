@@ -27,7 +27,7 @@ irm https://raw.githubusercontent.com/wepigcn/open-wepig-skills/main/install.ps1
 /plugin install open-wepig@open-wepig-skills
 ```
 
-> marketplace 安装只让 Claude Code 识别 skill，**仍需再跑一次方式一**配置鉴权与 `open-wepig-cli` 命令。
+> marketplace 安装只让 Claude Code 识别 skill，**仍需再跑一次方式一**配置鉴权。
 
 ### 方式三：手动 clone
 

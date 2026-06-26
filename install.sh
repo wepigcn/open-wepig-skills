@@ -126,7 +126,6 @@ write_wepig_wrapper() {
 exec node "$WES_ABS" "\$@"
 EOF
   chmod +x "$BINDIR/$CMD_NAME"
-  green "已生成命令 $BINDIR/$CMD_NAME"
 }
 
 # ---------- 仓库同步 ----------
@@ -295,9 +294,8 @@ verify() {
 # ---------- 安装流程 ----------
 do_install() {
   cyan "open-wepig-skills 安装程序"
-  echo "安装目录: $INSTALL_DIR"
   if [[ -f "$ENV_FILE" ]]; then
-    read_tty -rp "检测到已有鉴权文件 ${ENV_FILE}，是否复用？[Y/n] " reuse
+    read_tty -rp "检测到已有鉴权文件，是否复用？[Y/n] " reuse
     if [[ ! "$reuse" =~ ^[Nn]$ ]]; then
       green "复用已有鉴权文件"
       migrate_env
