@@ -1,6 +1,6 @@
 ---
 name: open-wepig
-description: 用于查询 open-wepig 后端数据，回答猪场养殖业务数据问题。使用时先找到合适查询，再确认参数并调用获取结果。
+description: 用于查询 wepig saas 数据，回答猪场养殖业务数据问题。使用时先找到合适查询，再确认参数并调用获取结果。
 ---
 
 # open-wepig 使用指南

@@ -59,6 +59,21 @@ ask_auth() {
   done
 }
 
+ensure_env_path() {
+  if ! grep -qF '# open-wepig-skills PATH' "$ENV_FILE" 2>/dev/null; then
+    cat >> "$ENV_FILE" <<'EOF'
+
+# open-wepig-skills PATH
+OPEN_WEPIG_BINDIR="$HOME/.local/bin"
+case ":$PATH:" in
+  *":$OPEN_WEPIG_BINDIR:"*) ;;
+  *) export PATH="$OPEN_WEPIG_BINDIR:$PATH" ;;
+esac
+unset OPEN_WEPIG_BINDIR
+EOF
+  fi
+}
+
 write_env() {
   mkdir -p "$ENV_DIR"; chmod 700 "$ENV_DIR"
   touch "$ENV_FILE"; chmod 600 "$ENV_FILE"
@@ -67,6 +82,7 @@ write_env() {
 export OPEN_WEPIG_APPID="$APPID"
 export OPEN_WEPIG_SECRET="$SECRET"
 EOF
+  ensure_env_path
   green "已写入 ${ENV_FILE}（权限 600）"
   local src_line='[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/open-wepig/env" ] && source "${XDG_CONFIG_HOME:-$HOME/.config}/open-wepig/env"  # open-wepig-skills'
   for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
@@ -91,6 +107,7 @@ migrate_env() {
     rm -f "$old"
     green "已迁移鉴权文件 $old → ${ENV_FILE}"
   fi
+  ensure_env_path
   for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
     touch "$rc"
     if grep -qF '.open-wepig.env' "$rc" 2>/dev/null; then
@@ -110,11 +127,6 @@ exec node "$WES_ABS" "\$@"
 EOF
   chmod +x "$BINDIR/$CMD_NAME"
   green "已生成命令 $BINDIR/$CMD_NAME"
-  local path_line="export PATH=\"$BINDIR:\$PATH\"  # open-wepig-skills"
-  for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
-    touch "$rc"
-    grep -qF "$BINDIR" "$rc" 2>/dev/null || printf '\n%s\n' "$path_line" >> "$rc"
-  done
 }
 
 # ---------- 仓库同步 ----------
