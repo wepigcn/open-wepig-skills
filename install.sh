@@ -365,9 +365,30 @@ verify() {
   rm -f "$log" 2>/dev/null || true
 }
 
+# 交互式安装范围选择（命令行已传 --project 时跳过）
+ask_install_scope() {
+  if [[ -n "$PROJECT_DIR" ]]; then
+    return
+  fi
+  echo "选择安装范围："
+  echo "  1) 用户空间（默认）"
+  echo "  2) 项目本地"
+  read_tty -rp "选择 [1]: " scope
+  scope="${scope:-1}"
+  if [[ "$scope" == "2" ]]; then
+    read_tty -rp "项目目录 [.]： " proj
+    proj="${proj:-.}"
+    mkdir -p "$proj" || { err "无法创建项目目录: $proj"; exit 1; }
+    PROJECT_DIR="$(cd "$proj" && pwd)" || { err "无法进入项目目录: $proj"; exit 1; }
+    PROJECT_ENV_FILE="$PROJECT_DIR/.open-wepig.env"
+    green "将安装到项目：$PROJECT_DIR"
+  fi
+}
+
 # ---------- 安装流程 ----------
 do_install() {
   cyan "open-wepig-skills 安装程序"
+  ask_install_scope
   if [[ -n "$PROJECT_DIR" ]]; then
     if [[ -f "$PROJECT_ENV_FILE" ]]; then
       read_tty -rp "检测到项目级鉴权文件，是否复用？[Y/n] " reuse

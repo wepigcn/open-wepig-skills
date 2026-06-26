@@ -353,9 +353,28 @@ function Verify {
   }
 }
 
+# 交互式安装范围选择（命令行已传 --project 时跳过）
+function Ask-InstallScope {
+  if ($PROJECT_DIR) { return }
+  Write-Host "选择安装范围："
+  Write-Host "  1) 用户空间（默认）"
+  Write-Host "  2) 项目本地"
+  $scope = Read-Host "选择 [1]"
+  if (!$scope) { $scope = "1" }
+  if ($scope -eq "2") {
+    $proj = Read-Host "项目目录 [.]"
+    if (!$proj) { $proj = "." }
+    if (!(Test-Path $proj)) { New-Item -ItemType Directory -Path $proj -Force | Out-Null }
+    $script:PROJECT_DIR = (Resolve-Path $proj).Path
+    $script:PROJECT_ENV_FILE = Join-Path $script:PROJECT_DIR ".open-wepig.env.ps1"
+    Write-Green "将安装到项目：$script:PROJECT_DIR"
+  }
+}
+
 # ---------- 安装流程 ----------
 function Do-Install {
   Write-Cyan "open-wepig-skills 安装程序"
+  Ask-InstallScope
   if ($PROJECT_DIR) {
     if (Test-Path $PROJECT_ENV_FILE) {
       $reuse = Read-Host "检测到项目级鉴权文件，是否复用？[Y/n]"
