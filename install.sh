@@ -8,6 +8,13 @@
 
 set -euo pipefail
 
+# 兼容 curl|bash 一键安装：管道模式下 bash 的 stdin 被脚本内容占用，
+# 脚本里的交互式 read 会把脚本后续行当输入读走（而非等待终端输入），
+# 这里把交互输入重定向到真实终端，使 ask_auth 等交互能正常工作
+if [[ ! -t 0 && -e /dev/tty ]]; then
+  exec 0</dev/tty
+fi
+
 REPO_URL="https://github.com/wepigcn/open-wepig-skills.git"
 REPO_OWNER="wepigcn"
 REPO_NAME="open-wepig-skills"
