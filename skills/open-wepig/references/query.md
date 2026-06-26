@@ -20,7 +20,6 @@
 
 ## query 参数注意点
 
-- 不要提供 `platform_id`；平台身份由鉴权结果注入。
 - 日期字段统一用 `YYYY-MM-DD`。
 - 分页字段通常是 `offset` / `limit`，实际必填和默认值以 `detail` 返回为准。
 - 猪场、耳牌、个体、批次等过滤字段名称不要猜测；先看 `detail` 的 `inputSchema`。

@@ -8,29 +8,33 @@
 
 set -euo pipefail
 
-# 兼容 curl|bash 一键安装：管道模式下 bash 的 stdin 被脚本内容占用，
-# 脚本里的交互式 read 会把脚本后续行当输入读走（而非等待终端输入），
-# 这里把交互输入重定向到真实终端，使 ask_auth 等交互能正常工作
-if [[ ! -t 0 && -e /dev/tty ]]; then
-  exec 0</dev/tty
-fi
-
 REPO_URL="https://github.com/wepigcn/open-wepig-skills.git"
 REPO_OWNER="wepigcn"
 REPO_NAME="open-wepig-skills"
 MARKETPLACE_NAME="open-wepig-skills"
 SKILL_NAME="open-wepig"          # skill / plugin / 扩展名
 CMD_NAME="open-wepig-cli"        # 生成的 PATH 命令名
-INSTALL_DIR="${OPEN_WEPIG_INSTALL_DIR:-$HOME/open-wepig-skills}"
+INSTALL_DIR="${OPEN_WEPIG_INSTALL_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/open-wepig-skills}"
 ENV_FILE="$HOME/.open-wepig.env"
 SKILL_SRC="$INSTALL_DIR/skills/$SKILL_NAME"
-WES_ABS="$SKILL_SRC/scripts/wepig.mjs"
+WES_ABS="$INSTALL_DIR/scripts/open-cli.mjs"
 BINDIR="$HOME/.local/bin"
 
 cyan()   { printf '\033[36m%s\033[0m\n' "$*"; }
 yellow() { printf '\033[33m%s\033[0m\n' "$*"; }
 green()  { printf '\033[32m%s\033[0m\n' "$*"; }
 err()    { printf '\033[31m%s\033[0m\n' "$*" >&2; }
+
+# 交互读取一行：curl|bash 下脚本 stdin 被管道占用，直接 read 会读到脚本后续行甚至卡死，
+# 因此固定从真实终端 /dev/tty 读取（不替换 fd0，不影响 bash 继续解析脚本）；
+# 其余用法同 read，透传 -r/-p/-s 等参数与变量名。
+read_tty() {
+  if [[ -e /dev/tty ]]; then
+    read "$@" </dev/tty
+  else
+    read "$@"
+  fi
+}
 
 usage() {
   cat <<EOF
@@ -44,13 +48,13 @@ EOF
 # ---------- 鉴权 ----------
 ask_auth() {
   echo "需要 open-wepig 网关鉴权，两项均为必填。"
-  read -rp "OPEN_WEPIG_APPID: " APPID
+  read_tty -rp "OPEN_WEPIG_APPID: " APPID
   while [[ -z "${APPID//[[:space:]]/}" ]]; do
-    err "APPID 不能为空"; read -rp "OPEN_WEPIG_APPID: " APPID
+    err "APPID 不能为空"; read_tty -rp "OPEN_WEPIG_APPID: " APPID
   done
-  read -rsp "OPEN_WEPIG_SECRET（输入不回显）: " SECRET; echo
+  read_tty -rsp "OPEN_WEPIG_SECRET（输入不回显）: " SECRET; echo
   while [[ -z "${SECRET//[[:space:]]/}" ]]; do
-    err "SECRET 不能为空"; read -rsp "OPEN_WEPIG_SECRET: " SECRET; echo
+    err "SECRET 不能为空"; read_tty -rsp "OPEN_WEPIG_SECRET: " SECRET; echo
   done
 }
 
@@ -261,7 +265,7 @@ do_install() {
   echo "选择目标 harness（可多选，逗号分隔；输入 a 全选）："
   echo "  1) Claude Code    2) Cursor    3) GitHub Copilot CLI"
   echo "  4) Antigravity    5) Gemini CLI    6) Codex CLI    7) OpenCode"
-  read -rp "选择 [1]: " choice
+  read_tty -rp "选择 [1]: " choice
   choice="${choice:-1}"
   [[ "$choice" == "a" || "$choice" == "A" ]] && choice="1,2,3,4,5,6,7"
   IFS=',' read -ra SEL <<< "$choice"
@@ -296,7 +300,7 @@ do_uninstall() {
   echo "  - 各 harness 的 symlink / plugin 注册"
   echo "  - 鉴权文件 $ENV_FILE"
   echo "  - shell 配置里的 open-wepig-skills 行（~/.zshrc、~/.bashrc，保留 .bak 备份）"
-  read -rp "确认卸载？[y/N] " confirm
+  read_tty -rp "确认卸载？[y/N] " confirm
   if [[ ! "$confirm" =~ ^[Yy]$ ]]; then yellow "已取消"; return; fi
 
   rm -f "$BINDIR/$CMD_NAME" 2>/dev/null && green "已删命令 $BINDIR/$CMD_NAME" || true
@@ -306,7 +310,7 @@ do_uninstall() {
   clean_rc
 
   echo
-  read -rp "是否删除 clone 目录 $INSTALL_DIR？[y/N] " delrepo
+  read_tty -rp "是否删除 clone 目录 $INSTALL_DIR？[y/N] " delrepo
   if [[ "$delrepo" =~ ^[Yy]$ ]]; then
     rm -rf "$INSTALL_DIR" && green "已删 $INSTALL_DIR"
   else

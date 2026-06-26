@@ -18,5 +18,3 @@ open-wepig-cli detail <endpoint_name>
 # 3. 调用接口
 open-wepig-cli call <endpoint_name> key=value ...
 ```
-
-业务参数以 `key=value` 传入；不要传 `platform_id`；日期统一 `YYYY-MM-DD`。

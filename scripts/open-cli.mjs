@@ -6,7 +6,7 @@
 // 等）、熔断、转发 query_srv 的逻辑全部保留在后端（src/mcp/），本脚本只是 transport：
 // 把 CLI 调用包成 JSON-RPC tools/call，POST 到后端，再把响应解包成业务 JSON 打印。
 //
-// 用法见同目录 SKILL.md。零运行时依赖，仅用 Node 内置（fetch / AbortSignal，需 Node>=18）。
+// 零运行时依赖，仅用 Node 内置（fetch / AbortSignal，需 Node>=18）。
 
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
@@ -42,7 +42,7 @@ function resolveCachePath() {
     .update(appid || "anonymous")
     .digest("hex")
     .slice(0, 16);
-  tokenCachePath = `${tmpdir()}/wepig-token-${appidHash}.json`;
+  tokenCachePath = `${tmpdir()}/open-wepig-token-${appidHash}.json`;
   return tokenCachePath;
 }
 
@@ -69,11 +69,11 @@ function saveDiskCache(token, expiresAt) {
 }
 
 function logErr(msg) {
-  process.stderr.write(`[wepig] ${msg}\n`);
+  process.stderr.write(`[open-wepig] ${msg}\n`);
 }
 
 function die(msg) {
-  process.stderr.write(`[wepig] ${msg}\n`);
+  process.stderr.write(`[open-wepig] ${msg}\n`);
   process.exit(1);
 }
 
@@ -193,13 +193,13 @@ async function rpc(toolName, args, url) {
 }
 
 function usage() {
-  process.stderr.write(`usage: wepig [--url URL] <command> ...
+  process.stderr.write(`usage: open-wepig [--url URL] <command> ...
 
 commands:
   services                                  列出后端 service 及健康/接口数
   endpoints [--keyword K] [--domain D] [--service S]   发现接口目录
   detail <name>                             取接口完整参数 schema（含必填项）
-  call <name> [key=value ...]                    调用接口（platform_id 由网关注入，勿传）
+  call <name> [key=value ...]                    调用接口
 
 options:
   --url URL   后端根地址（默认 $OPEN_WEPIG_URL 或 ${DEFAULT_OPEN_WEPIG_URL}）

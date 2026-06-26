@@ -7,18 +7,8 @@
 ### 方式一：一键脚本（推荐）
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/wepigcn/open-wepig-skills/main/install.sh | bash
+bash <(curl -fsSL https://raw.githubusercontent.com/wepigcn/open-wepig-skills/main/install.sh)
 ```
-
-或 clone 后运行：
-
-```bash
-git clone https://github.com/wepigcn/open-wepig-skills.git
-cd open-wepig-skills
-bash install.sh
-```
-
-完成后新开终端，即可在任意目录用 `open-wepig-cli services` 等命令。
 
 ### 方式二：Claude Code plugin marketplace
 
@@ -32,12 +22,12 @@ bash install.sh
 ### 方式三：手动 clone
 
 ```bash
-git clone https://github.com/wepigcn/open-wepig-skills.git ~/open-wepig-skills
+git clone https://github.com/wepigcn/open-wepig-skills.git ~/.local/share/open-wepig-skills
 # 鉴权（写入 ~/.zshrc 持久化）
 export OPEN_WEPIG_APPID=你的appid
 export OPEN_WEPIG_SECRET=你的secret
 # 直接用绝对路径调用，或跑一次 bash install.sh 生成 open-wepig-cli 命令
-node ~/open-wepig-skills/skills/open-wepig/scripts/wepig.mjs services
+node ~/.local/share/open-wepig-skills/scripts/open-cli.mjs services
 ```
 
 ## 各平台自动安装/更新命令
@@ -65,7 +55,7 @@ open-wepig-cli services
 ## 更新
 
 - 一键脚本：`bash install.sh update`（`git pull` + 刷新 `open-wepig-cli` 命令 + 各平台同步，鉴权保留）。
-- 手动：`git -C ~/open-wepig-skills pull`。
+- 手动：`git -C ~/.local/share/open-wepig-skills pull`。
 
 ## 卸载
 
