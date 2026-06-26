@@ -15,7 +15,8 @@ MARKETPLACE_NAME="open-wepig-skills"
 SKILL_NAME="open-wepig"          # skill / plugin / 扩展名
 CMD_NAME="open-wepig-cli"        # 生成的 PATH 命令名
 INSTALL_DIR="${OPEN_WEPIG_INSTALL_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/open-wepig-skills}"
-ENV_FILE="$HOME/.open-wepig.env"
+ENV_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/open-wepig"
+ENV_FILE="$ENV_DIR/env"
 SKILL_SRC="$INSTALL_DIR/skills/$SKILL_NAME"
 WES_ABS="$INSTALL_DIR/scripts/open-cli.mjs"
 BINDIR="$HOME/.local/bin"
@@ -59,6 +60,7 @@ ask_auth() {
 }
 
 write_env() {
+  mkdir -p "$ENV_DIR"; chmod 700 "$ENV_DIR"
   touch "$ENV_FILE"; chmod 600 "$ENV_FILE"
   cat > "$ENV_FILE" <<EOF
 # open-wepig 鉴权，由 install.sh 生成
@@ -66,10 +68,35 @@ export OPEN_WEPIG_APPID="$APPID"
 export OPEN_WEPIG_SECRET="$SECRET"
 EOF
   green "已写入 ${ENV_FILE}（权限 600）"
-  local line='[ -f "$HOME/.open-wepig.env" ] && source "$HOME/.open-wepig.env"  # open-wepig-skills'
+  local src_line='[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/open-wepig/env" ] && source "${XDG_CONFIG_HOME:-$HOME/.config}/open-wepig/env"  # open-wepig-skills'
   for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
     touch "$rc"
-    grep -qF 'open-wepig.env' "$rc" 2>/dev/null || printf '\n%s\n' "$line" >> "$rc"
+    if grep -qF '.open-wepig.env' "$rc" 2>/dev/null; then
+      grep -vF '.open-wepig.env' "$rc" > "$rc.tmp" && mv "$rc.tmp" "$rc" || rm -f "$rc.tmp"
+    fi
+    grep -qF 'open-wepig/env' "$rc" 2>/dev/null || printf '\n%s\n' "$src_line" >> "$rc"
+  done
+  if [[ -f "$HOME/.open-wepig.env" ]]; then
+    rm -f "$HOME/.open-wepig.env"
+    yellow "已清理旧文件 ~/.open-wepig.env"
+  fi
+}
+
+migrate_env() {
+  local old="$HOME/.open-wepig.env"
+  local src_line='[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/open-wepig/env" ] && source "${XDG_CONFIG_HOME:-$HOME/.config}/open-wepig/env"  # open-wepig-skills'
+  if [[ -f "$old" ]]; then
+    mkdir -p "$ENV_DIR"; chmod 700 "$ENV_DIR"
+    [[ -f "$ENV_FILE" ]] || { cp "$old" "$ENV_FILE"; chmod 600 "$ENV_FILE"; }
+    rm -f "$old"
+    green "已迁移鉴权文件 $old → ${ENV_FILE}"
+  fi
+  for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
+    [[ -f "$rc" ]] || continue
+    grep -qF '.open-wepig.env' "$rc" 2>/dev/null || continue
+    grep -vF '.open-wepig.env' "$rc" > "$rc.tmp" && mv "$rc.tmp" "$rc" || rm -f "$rc.tmp"
+    grep -qF 'open-wepig/env' "$rc" 2>/dev/null || printf '\n%s\n' "$src_line" >> "$rc"
+    green "已更新 $rc 中的鉴权 source 行"
   done
 }
 
@@ -284,6 +311,7 @@ do_install() {
 do_update() {
   cyan "open-wepig-skills 更新"
   sync_repo
+  migrate_env
   write_wepig_wrapper
   echo
   update_claude; update_cursor; update_copilot; update_antigravity
@@ -306,7 +334,7 @@ do_uninstall() {
   rm -f "$BINDIR/$CMD_NAME" 2>/dev/null && green "已删命令 $BINDIR/$CMD_NAME" || true
   uninstall_claude; uninstall_cursor; uninstall_copilot; uninstall_antigravity
   uninstall_gemini; uninstall_codex; uninstall_opencode
-  rm -f "$ENV_FILE" 2>/dev/null && green "已删 $ENV_FILE" || true
+  rm -f "$ENV_FILE" "$HOME/.open-wepig.env" 2>/dev/null && green "已删 $ENV_FILE" || true
   clean_rc
 
   echo
