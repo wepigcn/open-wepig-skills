@@ -317,7 +317,6 @@ do_install() {
   verify
   echo; green "安装完成。"
   echo "当前终端执行以下命令立即生效：source ${ENV_FILE}"
-  echo "或新开终端后即可用 $CMD_NAME 命令（如 $CMD_NAME services）。"
 }
 
 # ---------- 更新流程 ----------
