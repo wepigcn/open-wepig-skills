@@ -1,6 +1,6 @@
 # open-wepig-skills
 
-给编码助手接入[微猪生猪数字化管理平台](https://wepig.cn) 查询能力的 [Skills](https://docs.claude.com/en/docs/claude-code/skills) 集合。装好后，助手可调用 open-wepig 网关接口。
+给编码助手接入[微猪生猪数字化管理平台](https://wepig.cn) 查询能力的 [Skills](https://docs.claude.com/en/docs/claude-code/skills) 集合。
 
 ## 安装
 
@@ -44,25 +44,10 @@ node ~/.local/share/open-wepig-skills/scripts/open-cli.mjs services
 | **Codex CLI** | `codex marketplace add <repo>`（已含 `.agents/plugins/marketplace.json`），再 `/plugins` 安装 | marketplace 刷新 |
 | **OpenCode** | 写入 `~/.config/opencode/opencode.json` 的 `file://` plugin（需 `jq`） | `git pull` 后自动 |
 
-## 验证
-
-```bash
-open-wepig-cli services
-```
-
-或在 harness 里对助手说「列出 open-wepig 有哪些 service」，应触发 `open-wepig` skill 并返回 service 列表。
-
-## 更新
-
-- 一键脚本：`bash install.sh update`（`git pull` + 刷新 `open-wepig-cli` 命令 + 各平台同步，鉴权保留）。
-- 手动：`git -C ~/.local/share/open-wepig-skills pull`。
-
 ## 卸载
 
 ```bash
 bash install.sh uninstall
 ```
-
-交互确认后自动删：`open-wepig-cli` 命令、各 harness symlink / plugin 注册、鉴权文件、shell 配置里的相关行（保留 `.bak` 备份）；clone 目录会单独询问是否删除。
 
 > 各平台 plugin 卸载子命令（agy / gemini / codex）以兼容方式尝试，若该 CLI 的卸载子命令名不同，可能需手动确认。

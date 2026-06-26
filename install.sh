@@ -92,11 +92,11 @@ migrate_env() {
     green "已迁移鉴权文件 $old → ${ENV_FILE}"
   fi
   for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
-    [[ -f "$rc" ]] || continue
-    grep -qF '.open-wepig.env' "$rc" 2>/dev/null || continue
-    grep -vF '.open-wepig.env' "$rc" > "$rc.tmp" && mv "$rc.tmp" "$rc" || rm -f "$rc.tmp"
+    touch "$rc"
+    if grep -qF '.open-wepig.env' "$rc" 2>/dev/null; then
+      grep -vF '.open-wepig.env' "$rc" > "$rc.tmp" && mv "$rc.tmp" "$rc" || rm -f "$rc.tmp"
+    fi
     grep -qF 'open-wepig/env' "$rc" 2>/dev/null || printf '\n%s\n' "$src_line" >> "$rc"
-    green "已更新 $rc 中的鉴权 source 行"
   done
 }
 
@@ -284,8 +284,19 @@ verify() {
 do_install() {
   cyan "open-wepig-skills 安装程序"
   echo "安装目录: $INSTALL_DIR"
-  ask_auth
-  write_env
+  if [[ -f "$ENV_FILE" ]]; then
+    read_tty -rp "检测到已有鉴权文件 ${ENV_FILE}，是否复用？[Y/n] " reuse
+    if [[ ! "$reuse" =~ ^[Nn]$ ]]; then
+      green "复用已有鉴权文件"
+      migrate_env
+    else
+      ask_auth
+      write_env
+    fi
+  else
+    ask_auth
+    write_env
+  fi
   sync_repo
   write_wepig_wrapper
   echo
@@ -305,6 +316,8 @@ do_install() {
   done
   verify
   echo; green "安装完成。"
+  echo "当前终端执行以下命令立即生效：source ${ENV_FILE}"
+  echo "或新开终端后即可用 $CMD_NAME 命令（如 $CMD_NAME services）。"
 }
 
 # ---------- 更新流程 ----------
@@ -318,6 +331,7 @@ do_update() {
   update_gemini; update_codex; update_opencode
   verify
   echo; green "更新完成。"
+  echo "如鉴权文件已迁移，当前终端执行：source ${ENV_FILE}  刷新环境"
 }
 
 # ---------- 卸载流程 ----------
