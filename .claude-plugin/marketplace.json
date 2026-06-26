@@ -1,0 +1,22 @@
+{
+  "name": "open-wepig-skills",
+  "owner": {
+    "name": "wepigcn",
+    "url": "https://github.com/wepigcn"
+  },
+  "metadata": {
+    "description": "open-wepig 猪场养殖业务数据查询 skills",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "open-wepig",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/wepigcn/open-wepig-skills.git"
+      },
+      "description": "查询 open-wepig 后端数据，回答猪场养殖业务数据问题",
+      "version": "0.1.0"
+    }
+  ]
+}

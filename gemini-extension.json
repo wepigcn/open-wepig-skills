@@ -1,0 +1,6 @@
+{
+  "name": "open-wepig",
+  "version": "0.1.0",
+  "description": "查询 open-wepig 猪场养殖业务数据",
+  "contextFileName": "GEMINI.md"
+}
