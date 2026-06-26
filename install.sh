@@ -304,7 +304,7 @@ do_install() {
     esac
   done
   verify
-  echo; green "安装完成。新开终端后即可用 $CMD_NAME 命令（如 $CMD_NAME services）。"
+  echo; green "安装完成。"
 }
 
 # ---------- 更新流程 ----------
