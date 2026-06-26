@@ -20,27 +20,6 @@ bash <(curl -fsSL https://raw.githubusercontent.com/wepigcn/open-wepig-skills/ma
 irm https://raw.githubusercontent.com/wepigcn/open-wepig-skills/main/install.ps1 | iex
 ```
 
-### 项目级安装
-
-默认安装到用户空间（`~/.claude/skills`、`~/.cursor/skills`）。如需安装到指定项目本地：
-
-**macOS / Linux：**
-
-```bash
-bash install.sh install --project ./my-project
-```
-
-**Windows：**
-
-```powershell
-powershell -ExecutionPolicy Bypass -File install.ps1 install --project ./my-project
-```
-
-项目级安装会：
-- 把 Claude Code / Cursor 的 skill 链接到项目目录下的 `.claude/skills` / `.cursor/skills`。
-- 在项目根目录生成 `.open-wepig.env`（Bash）或 `.open-wepig.env.ps1`（PowerShell）存放鉴权。
-- Copilot / Antigravity / Gemini / Codex / OpenCode 本质为全局插件，仍会全局安装并给出提示。
-
 ### 方式二：Claude Code plugin marketplace
 
 ```text

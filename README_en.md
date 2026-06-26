@@ -20,27 +20,6 @@ bash <(curl -fsSL https://raw.githubusercontent.com/wepigcn/open-wepig-skills/ma
 irm https://raw.githubusercontent.com/wepigcn/open-wepig-skills/main/install.ps1 | iex
 ```
 
-### Project-level installation
-
-By default, skills are installed to user-space directories (`~/.claude/skills`, `~/.cursor/skills`). To install into a specific project instead:
-
-**macOS / Linux:**
-
-```bash
-bash install.sh install --project ./my-project
-```
-
-**Windows:**
-
-```powershell
-powershell -ExecutionPolicy Bypass -File install.ps1 install --project ./my-project
-```
-
-Project-level installation will:
-- Link the Claude Code / Cursor skill into `.claude/skills` / `.cursor/skills` under the project directory.
-- Create a project-level auth file: `.open-wepig.env` (Bash) or `.open-wepig.env.ps1` (PowerShell) in the project root.
-- Install Copilot / Antigravity / Gemini / Codex / OpenCode globally (they are inherently global plugins) and print a notice.
-
 ### Option 2: Claude Code plugin marketplace
 
 ```text
