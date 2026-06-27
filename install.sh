@@ -18,7 +18,7 @@ INSTALL_DIR="${OPEN_WEPIG_INSTALL_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/open
 ENV_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/open-wepig"
 ENV_FILE="$ENV_DIR/env"
 SKILL_SRC="$INSTALL_DIR/skills/$SKILL_NAME"
-WES_ABS="$INSTALL_DIR/scripts/open-cli.mjs"
+WES_ABS="$INSTALL_DIR/bin/open-cli.mjs"
 BINDIR="$HOME/.local/bin"
 
 # 项目级安装参数（由参数解析填充）

@@ -50,7 +50,7 @@ git clone https://github.com/wepigcn/open-wepig-skills.git ~/.local/share/open-w
 export OPEN_WEPIG_APPID=your_appid
 export OPEN_WEPIG_SECRET=your_secret
 # Call directly, or run bash install.sh to generate the open-wepig-cli command
-node ~/.local/share/open-wepig-skills/scripts/open-cli.mjs services
+node ~/.local/share/open-wepig-skills/bin/open-cli.mjs services
 ```
 
 **Windows:**

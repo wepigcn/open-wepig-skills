@@ -21,7 +21,7 @@ $INSTALL_DIR = if ($env:OPEN_WEPIG_INSTALL_DIR) { $env:OPEN_WEPIG_INSTALL_DIR } 
 $ENV_DIR     = Join-Path $env:USERPROFILE ".config\open-wepig"
 $ENV_FILE    = Join-Path $ENV_DIR "env.ps1"
 $SKILL_SRC   = Join-Path $INSTALL_DIR "skills\$SKILL_NAME"
-$WES_ABS     = Join-Path $INSTALL_DIR "scripts\open-cli.mjs"
+$WES_ABS     = Join-Path $INSTALL_DIR "bin\open-cli.mjs"
 $BINDIR      = Join-Path $env:USERPROFILE ".local\bin"
 
 # 项目级安装参数（由参数解析填充）
