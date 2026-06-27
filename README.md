@@ -8,6 +8,17 @@
 
 ### 方式一：一键脚本（推荐）
 
+**让 AI 助手帮你安装** — 将以下提示词粘贴到 Claude Code、Cursor、Qoder 或任意 AI 编程助手中：
+
+```
+请按照以下安装指南，帮我安装 open-wepig-skills：
+https://raw.githubusercontent.com/wepigcn/open-wepig-skills/main/docs/install-guide.md
+```
+
+AI 助手会读取安装指南、向你确认凭证和目标平台，然后自动完成整个安装流程。
+
+**或者自己运行：**
+
 **macOS / Linux：**
 
 ```bash

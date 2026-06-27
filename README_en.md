@@ -8,6 +8,17 @@ A collection of [Skills](https://docs.claude.com/en/docs/claude-code/skills) tha
 
 ### Option 1: One-liner (recommended)
 
+**Let your AI agent install it** — paste this prompt into Claude Code, Cursor, Qoder, or any AI coding agent:
+
+```
+Please install open-wepig-skills by following the instructions here:
+https://raw.githubusercontent.com/wepigcn/open-wepig-skills/main/docs/install-guide.md
+```
+
+The agent will read the install guide, confirm your credentials and target harness(es), and complete the full installation for you.
+
+**Or run it yourself:**
+
 **macOS / Linux:**
 
 ```bash
