@@ -30,6 +30,9 @@ open-wepig-cli detail <endpoint_name>
 
 # 3. 调用接口：只传业务参数，key=value 会自动推断类型
 open-wepig-cli call <endpoint_name> key=value ...
+
+# 4. 结果转述：不要直接粘贴原始 JSON；按下方「结果呈现」整理成
+#    用户问题对应的结论、表格或列表
 ```
 
 如果不确定有哪些 service：
@@ -37,6 +40,13 @@ open-wepig-cli call <endpoint_name> key=value ...
 ```bash
 open-wepig-cli services
 ```
+
+## 结果呈现
+
+`call` 返回的 JSON 是事实来源。回答用户时整理结构和重点，但不要翻译、改写或猜测接口返回的业务值。
+
+- **先按用户问题组织答案**：用户问汇总就给结论和关键数字；用户问明细再给表格或列表。不要把完整 JSON 当作答案。
+- **优先使用展示字段**：同一实体同时存在多个字段时，优先展示 `*_name`、`*_desc`、`*_label` 这类字段。只有在没有展示字段且用户问题需要定位记录时，才展示对应的 `*_id`、`*_code`、`*_origin`。
 
 ## 常用命令
 

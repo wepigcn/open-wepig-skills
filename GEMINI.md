@@ -17,4 +17,8 @@ open-wepig-cli detail <endpoint_name>
 
 # 3. 调用接口
 open-wepig-cli call <endpoint_name> key=value ...
+
+# 4. 结果转述：不要直接粘贴原始 JSON；按用户问题组织结论/表格。
+#    优先展示 *_name / *_desc / *_label；没有展示字段且需要定位记录时再展示 id/code/origin。
+#    完整规则见 skills/open-wepig/SKILL.md「结果呈现」。
 ```
