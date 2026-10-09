@@ -14,6 +14,7 @@ description: 用于查询 wepig saas 数据，回答猪场养殖业务数据问�
 | 场景 | 读取 |
 | --- | --- |
 | 配种、妊娠、分娩、断奶、动物档案、精液、流转、遗传、淘汰、考测、审计等养殖查询 | [references/query.md](references/query.md) |
+| 生产日报/周报/月报、存栏统计、PSY/NPD、结算、公猪/母猪分析、母猪 ROI、PRRS 预警等报表 | [references/report.md](references/report.md) |
 
 不要一次性加载所有 references。主流程、鉴权和命令语法以本文件为准；业务 keyword、参数约定和领域例子放在 reference 中。
 
@@ -25,7 +26,8 @@ description: 用于查询 wepig saas 数据，回答猪场养殖业务数据问�
 # 1. 发现接口：先用用户问题里的关键词；必要时参考 references 选 keyword
 open-wepig-cli endpoints --keyword <keyword>
 
-# 2. 查看参数：确认 required、字段类型、分页和日期要求
+# 2. 查看参数与响应结构：确认 required、字段类型、分页和日期要求；
+#    若返回含 outputSchema，一并了解响应字段清单与类型
 open-wepig-cli detail <endpoint_name>
 
 # 3. 调用接口：只传业务参数，key=value 会自动推断类型
@@ -47,6 +49,7 @@ open-wepig-cli services
 
 - **先按用户问题组织答案**：用户问汇总就给结论和关键数字；用户问明细再给表格或列表。不要把完整 JSON 当作答案。
 - **优先使用展示字段**：同一实体同时存在多个字段时，优先展示 `*_name`、`*_desc`、`*_label` 这类字段。只有在没有展示字段且用户问题需要定位记录时，才展示对应的 `*_id`、`*_code`、`*_origin`。
+- **按 outputSchema 解读字段**：`detail` 返回的 `outputSchema` 给出响应字段清单与类型，是判断哪些字段值得展示的依据（用于区分展示字段与 id/code）。不是所有接口都声明了响应结构，缺失该字段时按字段名命名规则推断。
 
 ## 常用命令
 
@@ -54,7 +57,7 @@ open-wepig-cli services
 | --- | --- | --- |
 | `services` | 列出 service 及健康/接口数 | `open-wepig-cli services` |
 | `endpoints` | 按 keyword/domain/service 发现接口 | `open-wepig-cli endpoints --keyword breeding` |
-| `detail` | 取单个接口完整参数 schema | `open-wepig-cli detail query_event_breeding` |
+| `detail` | 取单个接口完整参数 schema（含必填项与响应结构 `outputSchema`） | `open-wepig-cli detail query_event_breeding` |
 | `call` | 调用接口 | `open-wepig-cli call query_event_gilt_heat start_date=2026-06-01 end_date=2026-06-25` |
 
 ## 参数规则
@@ -63,6 +66,7 @@ open-wepig-cli services
 - 业务参数以 `key=value` 传入：`limit=100` 会转整数，`farm_ids=[1,2]` 会转数组，`start_date=2026-06-01` 保持字符串。
 - 日期统一使用 `YYYY-MM-DD`。
 - 必填字段以 `detail <endpoint_name>` 返回的 `inputSchema.required` 为准。
+- 响应结构以 `detail` 返回的 `outputSchema` 为准；部分接口未声明响应结构，此时无该字段。
 
 ## 鉴权
 

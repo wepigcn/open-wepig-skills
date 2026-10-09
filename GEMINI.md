@@ -12,7 +12,7 @@
 # 1. 发现接口
 open-wepig-cli endpoints --keyword <keyword>
 
-# 2. 查看参数
+# 2. 查看参数与响应结构
 open-wepig-cli detail <endpoint_name>
 
 # 3. 调用接口

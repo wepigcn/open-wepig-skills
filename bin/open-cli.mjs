@@ -31,18 +31,26 @@ const secret = process.env.OPEN_WEPIG_SECRET || null;
 const tokenUrl =
   process.env.OPEN_WEPIG_TOKEN_URL || (new URL(openWepigUrl).origin + "/ucenter/token");
 
-// ---- token 缓存：进程内存 + 落盘（os.tmpdir），跨命令复用；按 appid 哈希隔离多套凭证 ----
+// ---- token 缓存：进程内存 + 落盘（os.tmpdir），跨命令复用；按 appid+后端 origin 哈希隔离 ----
 const tokenCache = { token: null, expiresAt: 0 };
 
-// 落盘缓存路径依赖 appid，延迟到首次使用时计算
+// 落盘缓存路径依赖 appid 与后端地址，延迟到首次使用时计算。
+// 同一 appid 在不同环境（如 hi-papi / pre-papi）换取的 token 互不通用，
+// 必须把后端 origin 纳入缓存键，否则会复用到别环境的 token 被网关拒绝。
 let tokenCachePath = null;
 function resolveCachePath() {
   if (tokenCachePath) return tokenCachePath;
-  const appidHash = createHash("md5")
-    .update(appid || "anonymous")
+  let origin;
+  try {
+    origin = new URL(openWepigUrl).origin;
+  } catch {
+    origin = openWepigUrl;
+  }
+  const keyHash = createHash("md5")
+    .update(`${appid || "anonymous"}|${origin}`)
     .digest("hex")
     .slice(0, 16);
-  tokenCachePath = `${tmpdir()}/open-wepig-token-${appidHash}.json`;
+  tokenCachePath = `${tmpdir()}/open-wepig-token-${keyHash}.json`;
   return tokenCachePath;
 }
 
@@ -162,8 +170,9 @@ async function postRpc(payload, url, isRetry = false) {
  * 构造 JSON-RPC tools/call 并 POST，返回解包后的业务文本。
  * 协议级错误（INVALID_PARAMS / INTERNAL_ERROR 等）或工具级错误（isError=true）
  * 一律写到 stderr 并非零退出；成功则返回 content[0].text（业务 JSON 文本）。
+ * isRetry=true 表示这是 token 刷新后的重试（仅一次，避免死循环）。
  */
-async function rpc(toolName, args, url) {
+async function rpc(toolName, args, url, isRetry = false) {
   const payload = {
     jsonrpc: "2.0",
     id: 1,
@@ -173,13 +182,30 @@ async function rpc(toolName, args, url) {
   const endpoint = url.replace(/\/+$/, "") + "/open/mcp";
   let resp;
   try {
-    resp = await postRpc(payload, endpoint);
+    // isRetry=true 时强制跳过 token 缓存，避免“用坏缓存 token 重试坏缓存 token”
+    resp = await postRpc(payload, endpoint, isRetry);
   } catch (e) {
     die(`无法连接后端 ${endpoint}: ${e?.message || e}`);
   }
 
   const envelope = await resp.json().catch(() => null);
   if (!envelope) die(`后端响应非 JSON (HTTP ${resp.status})`);
+
+  // 网关裸业务错误（如 {"msg":"invalid access token","code":20002}）：
+  // 不是 JSON-RPC 信封，绝不能静默当空结果。token 类错误清缓存重试一次，其余直接报错。
+  if (!("result" in envelope) && !("error" in envelope)) {
+    const code = envelope.code;
+    const msg = envelope.msg ?? JSON.stringify(envelope).slice(0, 300);
+    if (code === 20002 || /invalid access token/i.test(String(msg))) {
+      if (!isRetry) {
+        logErr(`网关拒绝 access_token（code=${code}），刷新 token 后重试`);
+        tokenCache.token = null;
+        return rpc(toolName, args, url, /* isRetry */ true);
+      }
+      die(`access_token 刷新后仍被拒绝 (code=${code}): ${msg}`);
+    }
+    die(`网关返回业务错误 (code=${code ?? "未知"}): ${msg}`);
+  }
 
   if (envelope.error) {
     die(`调用失败 (${envelope.error.code}): ${envelope.error.message}`);
