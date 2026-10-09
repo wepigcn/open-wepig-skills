@@ -24,7 +24,6 @@
 | PRRS 风险预警（概览/单场详情/可关联预警周） | `prrs` / `prrs_warning` |
 | 批次详情卡 | `batch_detail` |
 | 年报智能解析 | `interpretation` / `annual` |
-| 有效场列表 | `valid_farms` |
 | 用户行为分析 | `user_behavior` |
 
 若 `endpoints` 0 命中，按响应里的 `hint` 放宽 keyword；报表路径常以 `/report` 开头，tool 名中前缀已被剥离，直接用语义词（如 `daily`、`inventory`、`psy`）搜索即可。

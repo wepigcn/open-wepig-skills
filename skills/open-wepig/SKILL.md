@@ -15,6 +15,7 @@ description: 用于查询 wepig saas 数据，回答猪场养殖业务数据问�
 | --- | --- |
 | 配种、妊娠、分娩、断奶、动物档案、精液、流转、遗传、淘汰、考测、审计等养殖查询 | [references/query.md](references/query.md) |
 | 生产日报/周报/月报、存栏统计、PSY/NPD、结算、公猪/母猪分析、母猪 ROI、PRRS 预警等报表 | [references/report.md](references/report.md) |
+| 集团、公司、猪场、组织结构等后台管理查询 | [references/backstage.md](references/backstage.md) |
 
 不要一次性加载所有 references。主流程、鉴权和命令语法以本文件为准；业务 keyword、参数约定和领域例子放在 reference 中。
 
