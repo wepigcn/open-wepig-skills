@@ -84,7 +84,7 @@ node $env:LOCALAPPDATA\open-wepig-skills\bin\open-cli.mjs services
 | **GitHub Copilot CLI** | `copilot plugin marketplace add` + `install` | re-run install |
 | **Antigravity** | `agy plugin install <repo>` | re-run to update |
 | **Gemini CLI** | `gemini extensions install <repo>` (includes `gemini-extension.json`) | `gemini extensions update open-wepig` |
-| **Codex CLI** | `codex marketplace add <repo>` (includes `.agents/plugins/marketplace.json`), then install via `/plugins` | marketplace refresh |
+| **Codex CLI** | `codex plugin marketplace add <repo-or-https-url>` (includes `.agents/plugins/marketplace.json`), then install via `/plugins` | `codex plugin marketplace upgrade` |
 | **OpenCode** | writes `file://` plugin to `~/.config/opencode/opencode.json` (requires `jq` on macOS/Linux) | after `git pull` |
 
 ## Uninstall

@@ -172,6 +172,11 @@ function Write-CLIWrapper {
 # ---------- 仓库同步 ----------
 function Sync-Repo {
   if (Test-Path (Join-Path $INSTALL_DIR ".git")) {
+    $cur = git -C $INSTALL_DIR remote get-url origin 2>$null
+    if ($cur -and ($cur -ne $REPO_URL)) {
+      Write-Yellow "已有仓库来源为 ${cur}，与本次指定的 $REPO_URL 不同；仍从已有来源拉取"
+      Write-Yellow "如需切换：git -C `"$INSTALL_DIR`" remote set-url origin $REPO_URL"
+    }
     Write-Host "已存在仓库，拉取更新..."
     git -C $INSTALL_DIR pull --ff-only
   } else {
@@ -197,6 +202,12 @@ function Global-HarnessWarning($name) {
   }
 }
 
+# Gemini / Antigravity 官方只以 GitHub 仓库为扩展源，非 GitHub 源可能失败
+function Repo-SourceWarning($name) {
+  if ($REPO_HOST -eq "github.com") { return }
+  Write-Yellow "注意：$name 官方以 GitHub 仓库为扩展源，当前为 ${REPO_HOST}；失败时请改用 GitHub 源重跑"
+}
+
 function Install-Claude {
   if ($PROJECT_DIR) { Link-Skill (Join-Path $PROJECT_DIR ".claude\skills") }
   else { Link-Skill (Join-Path $env:USERPROFILE ".claude\skills") }
@@ -219,6 +230,7 @@ function Install-Copilot {
 
 function Install-Antigravity {
   Global-HarnessWarning "Antigravity"
+  Repo-SourceWarning "Antigravity"
   if (!(Get-Command agy -ErrorAction SilentlyContinue)) {
     Write-Yellow "未检测到 agy。装好后执行：agy plugin install $REPO_URL"; return
   }
@@ -228,6 +240,7 @@ function Install-Antigravity {
 
 function Install-Gemini {
   Global-HarnessWarning "Gemini CLI"
+  Repo-SourceWarning "Gemini CLI"
   if (!(Get-Command gemini -ErrorAction SilentlyContinue)) {
     Write-Yellow "未检测到 gemini。装好后执行：gemini extensions install $REPO_URL"; return
   }
@@ -238,10 +251,12 @@ function Install-Gemini {
 function Install-Codex {
   Global-HarnessWarning "Codex CLI"
   if (!(Get-Command codex -ErrorAction SilentlyContinue)) {
-    Write-Yellow "未检测到 codex。装好后执行：codex marketplace add $REPO_OWNER/$REPO_NAME，再在 /plugins 安装 open-wepig"; return
+    Write-Yellow "未检测到 codex。装好后执行：codex plugin marketplace add ${REPO_URL}，再在 /plugins 安装 open-wepig"; return
   }
-  codex marketplace add "$REPO_OWNER/$REPO_NAME" 2>$null
-  Write-Green "Codex marketplace 已注册。请在 Codex CLI 的 /plugins 中安装 open-wepig"
+  codex plugin marketplace add $REPO_URL 2>$null
+  if ($LASTEXITCODE -ne 0) { codex plugin marketplace add "$REPO_OWNER/$REPO_NAME" 2>$null }
+  if ($LASTEXITCODE -eq 0) { Write-Green "Codex marketplace 已注册。请在 Codex CLI 的 /plugins 中安装 open-wepig" }
+  else { Write-Err "Codex marketplace 注册失败，请手动执行：codex plugin marketplace add $REPO_URL" }
 }
 
 function Install-OpenCode {
@@ -291,8 +306,9 @@ function Update-Gemini {
 }
 function Update-Codex {
   if (!(Get-Command codex -ErrorAction SilentlyContinue)) { return }
-  codex marketplace add "$REPO_OWNER/$REPO_NAME" 2>$null
-  Write-Green "Codex：marketplace 已刷新（plugin 内容随 repo pull 更新）"
+  codex plugin marketplace upgrade 2>$null
+  if ($LASTEXITCODE -eq 0) { Write-Green "Codex：marketplace 已刷新" }
+  else { codex plugin marketplace add $REPO_URL 2>$null }
 }
 function Update-OpenCode {
   $cfg = Join-Path $env:USERPROFILE ".config\opencode\opencode.json"
@@ -342,7 +358,8 @@ function Uninstall-Gemini {
 }
 function Uninstall-Codex {
   if (!(Get-Command codex -ErrorAction SilentlyContinue)) { return }
-  codex marketplace remove "$REPO_OWNER/$REPO_NAME" 2>$null; if (!$?) { codex plugin uninstall $SKILL_NAME 2>$null }
+  codex plugin remove $SKILL_NAME 2>$null; if ($LASTEXITCODE -ne 0) { codex plugin uninstall $SKILL_NAME 2>$null }
+  codex plugin marketplace remove $MARKETPLACE_NAME 2>$null
   Write-Green "Codex：已尝试卸载"
 }
 function Uninstall-OpenCode {

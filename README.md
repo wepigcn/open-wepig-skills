@@ -44,6 +44,9 @@ irm https://gitee.com/wepig/open-wepig-skills/raw/main/install.ps1 | iex
 | `OPEN_WEPIG_REPO_NAME` | 仓库名 | `open-wepig-skills` |
 | `OPEN_WEPIG_REPO_URL` | 整体覆盖克隆地址 | `https://<host>/<owner>/<name>.git` |
 
+> 已从 GitHub 装过的用户重跑上面的命令**不会自动切换来源**（脚本只对已有 clone 执行 `git pull`，并会提示来源不一致）。要切换：`git -C ~/.local/share/open-wepig-skills remote set-url origin https://gitee.com/wepig/open-wepig-skills.git`。
+> 另：Gemini CLI / Antigravity 官方以 GitHub 仓库为扩展源，用 Gitee 源安装可能失败（脚本会先给出提示）。
+
 ### 方式二：Claude Code plugin marketplace
 
 ```text
@@ -89,7 +92,7 @@ node $env:LOCALAPPDATA\open-wepig-skills\bin\open-cli.mjs services
 | **GitHub Copilot CLI** | `copilot plugin marketplace add` + `install` | 重跑 install |
 | **Antigravity** | `agy plugin install <repo>` | 重跑即更新 |
 | **Gemini CLI** | `gemini extensions install <repo>`（已含 `gemini-extension.json`） | `gemini extensions update open-wepig` |
-| **Codex CLI** | `codex marketplace add <repo>`（已含 `.agents/plugins/marketplace.json`），再 `/plugins` 安装 | marketplace 刷新 |
+| **Codex CLI** | `codex plugin marketplace add <repo-or-https-url>`（已含 `.agents/plugins/marketplace.json`），再 `/plugins` 安装 | `codex plugin marketplace upgrade` |
 | **OpenCode** | 写入 `~/.config/opencode/opencode.json` 的 `file://` plugin（macOS/Linux 需 `jq`） | `git pull` 后自动 |
 
 ## 卸载

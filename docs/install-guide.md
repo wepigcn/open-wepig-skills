@@ -43,6 +43,11 @@ irm https://gitee.com/wepig/open-wepig-skills/raw/main/install.ps1 | iex
 | `OPEN_WEPIG_REPO_NAME` | `open-wepig-skills`（无需设置） | `open-wepig-skills` |
 | `OPEN_WEPIG_REPO_URL` | —（可选，整体覆盖克隆地址） | `https://github.com/wepigcn/open-wepig-skills.git` |
 
+注意事项：
+- 用户之前若已用 GitHub 源装过，重跑上面的命令**不会自动切换来源**（脚本对已有 clone 只做 `git pull`，并会提示来源不一致）。切换方式：`git -C ~/.local/share/open-wepig-skills remote set-url origin https://gitee.com/wepig/open-wepig-skills.git`。
+- Gemini CLI / Antigravity 官方以 GitHub 仓库为扩展源，Gitee 源可能装不上（脚本会先警告，失败时请让用户改用 GitHub 源）。
+- Codex CLI 用 `codex plugin marketplace add <https-url>` 注册，Gitee 地址可用。
+
 脚本会：
 - 把仓库克隆到 `~/.local/share/open-wepig-skills`（Linux/macOS）或 `%LOCALAPPDATA%\open-wepig-skills`（Windows）
 - 提示输入 `OPEN_WEPIG_APPID` 与 `OPEN_WEPIG_SECRET` 并持久化

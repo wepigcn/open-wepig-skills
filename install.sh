@@ -197,6 +197,11 @@ EOF
 # ---------- 仓库同步 ----------
 sync_repo() {
   if [[ -d "$INSTALL_DIR/.git" ]]; then
+    local cur; cur="$(git -C "$INSTALL_DIR" remote get-url origin 2>/dev/null || true)"
+    if [[ -n "$cur" && "$cur" != "$REPO_URL" ]]; then
+      yellow "已有仓库来源为 ${cur}，与本次指定的 $REPO_URL 不同；仍从已有来源拉取"
+      yellow "如需切换：git -C \"$INSTALL_DIR\" remote set-url origin $REPO_URL"
+    fi
     echo "已存在仓库，拉取更新..."; git -C "$INSTALL_DIR" pull --ff-only
   else
     echo "克隆仓库 $REPO_URL ..."; git clone "$REPO_URL" "$INSTALL_DIR"
@@ -211,6 +216,12 @@ global_harness_warning() {
   if [[ -n "$PROJECT_DIR" ]]; then
     yellow "注意：$1 为全局插件/扩展，不局限于此项目"
   fi
+}
+
+# Gemini / Antigravity 官方只以 GitHub 仓库为扩展源，非 GitHub 源可能失败
+repo_source_warning() {
+  [[ "$REPO_HOST" == "github.com" ]] && return 0
+  yellow "注意：$1 官方以 GitHub 仓库为扩展源，当前为 ${REPO_HOST}；失败时请改用 GitHub 源重跑"
 }
 
 install_claude() {
@@ -240,6 +251,7 @@ install_copilot() {
 
 install_antigravity() {
   global_harness_warning "Antigravity"
+  repo_source_warning "Antigravity"
   if ! command -v agy >/dev/null 2>&1; then
     yellow "未检测到 agy。装好后执行：agy plugin install $REPO_URL"; return
   fi
@@ -249,6 +261,7 @@ install_antigravity() {
 
 install_gemini() {
   global_harness_warning "Gemini CLI"
+  repo_source_warning "Gemini CLI"
   if ! command -v gemini >/dev/null 2>&1; then
     yellow "未检测到 gemini。装好后执行：gemini extensions install $REPO_URL"; return
   fi
@@ -259,10 +272,13 @@ install_gemini() {
 install_codex() {
   global_harness_warning "Codex CLI"
   if ! command -v codex >/dev/null 2>&1; then
-    yellow "未检测到 codex。装好后执行：codex marketplace add $REPO_OWNER/${REPO_NAME}，再在 /plugins 安装 open-wepig"; return
+    yellow "未检测到 codex。装好后执行：codex plugin marketplace add ${REPO_URL}，再在 /plugins 安装 open-wepig"; return
   fi
-  codex marketplace add "$REPO_OWNER/$REPO_NAME" || true
-  green "Codex marketplace 已注册。请在 Codex CLI 的 /plugins 中安装 open-wepig"
+  if codex plugin marketplace add "$REPO_URL" >/dev/null 2>&1 || codex plugin marketplace add "$REPO_OWNER/$REPO_NAME" >/dev/null 2>&1; then
+    green "Codex marketplace 已注册。请在 Codex CLI 的 /plugins 中安装 open-wepig"
+  else
+    err "Codex marketplace 注册失败，请手动执行：codex plugin marketplace add $REPO_URL"
+  fi
 }
 
 install_opencode() {
@@ -316,8 +332,11 @@ update_gemini() {
 
 update_codex() {
   command -v codex >/dev/null 2>&1 || return 0
-  codex marketplace add "$REPO_OWNER/$REPO_NAME" >/dev/null 2>&1 || true
-  green "Codex：marketplace 已刷新（plugin 内容随 repo pull 更新）"
+  if codex plugin marketplace upgrade >/dev/null 2>&1; then
+    green "Codex：marketplace 已刷新"
+  else
+    codex plugin marketplace add "$REPO_URL" >/dev/null 2>&1 || true
+  fi
 }
 
 update_opencode() {
@@ -359,7 +378,8 @@ uninstall_gemini() {
 
 uninstall_codex() {
   command -v codex >/dev/null 2>&1 || return 0
-  { codex marketplace remove "$REPO_OWNER/$REPO_NAME" || codex plugin uninstall "$SKILL_NAME"; } >/dev/null 2>&1 || true
+  codex plugin remove "$SKILL_NAME" >/dev/null 2>&1 || codex plugin uninstall "$SKILL_NAME" >/dev/null 2>&1 || true
+  codex plugin marketplace remove "$MARKETPLACE_NAME" >/dev/null 2>&1 || true
   green "Codex：已尝试卸载"
 }
 

@@ -43,6 +43,11 @@ Environment variables understood by both install scripts:
 | `OPEN_WEPIG_REPO_NAME` | `open-wepig-skills` (no need to set) | `open-wepig-skills` |
 | `OPEN_WEPIG_REPO_URL` | — (optional, overrides the clone URL entirely) | `https://github.com/wepigcn/open-wepig-skills.git` |
 
+Notes:
+- If the user already installed from one source, re-running the script does **not** switch sources — an existing clone is only `git pull`-ed, and the script warns when the origin differs. Switch with `git -C ~/.local/share/open-wepig-skills remote set-url origin https://github.com/wepigcn/open-wepig-skills.git`.
+- Codex CLI registers via `codex plugin marketplace add <https-url>`; Gitee URLs work there too.
+- Gemini CLI / Antigravity officially take GitHub repos as extension sources; a Gitee source may fail (the script warns first).
+
 The script will:
 - Clone the repo to `~/.local/share/open-wepig-skills` (Linux/macOS) or `%LOCALAPPDATA%\open-wepig-skills` (Windows)
 - Prompt for `OPEN_WEPIG_APPID` and `OPEN_WEPIG_SECRET`, then persist them
