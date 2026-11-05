@@ -1,3 +1,5 @@
 .claude
 .agents/skills
 .DS_Store
+
+docs/personal-api-key-auth.md
