@@ -1,80 +1,97 @@
-# open-wepig-skills — AI Agent Install Guide
+# open-wepig-skills — AI Agent 安装指南（国内 / Gitee 源）
 
-You are an AI coding assistant. Follow these steps to install open-wepig-skills for the user.
+你是 AI 编程助手。按以下步骤为用户安装 open-wepig-skills。
 
-## What is open-wepig-skills?
+> 本文使用 **Gitee 镜像源**（`gitee.com/wepig/open-wepig-skills`），适合国内网络环境。
+> 海外网络请改用 [install-guide_en.md](install-guide_en.md)（GitHub 官方仓库）。
 
-A collection of Skills that give coding assistants (Claude Code, Cursor, Qoder, Gemini CLI, Codex CLI, OpenCode, etc.) query capabilities for the [Wepig Pig digital management platform](https://wepig.cn).
+## open-wepig-skills 是什么？
 
-## Step 1 — Confirm prerequisites
+一组 Skills，为编码助手（Claude Code、Cursor、Qoder、Gemini CLI、Codex CLI、OpenCode 等）接入[微猪生猪数字化管理平台](https://wepig.cn)的查询能力。
 
-Ask the user:
-1. Their operating system (macOS / Linux / Windows)
-2. Their `OPEN_WEPIG_APPID` and `OPEN_WEPIG_SECRET` credentials (they can get these from the Wepig platform)
-3. Which coding harness(es) they use (Claude Code, Cursor, Gemini CLI, Codex CLI, OpenCode, Antigravity, GitHub Copilot CLI — or "all available")
+## Step 1 — 确认前提
 
-## Step 2 — Run the install script
+先向用户确认：
+1. 操作系统（macOS / Linux / Windows）
+2. `OPEN_WEPIG_APPID` 与 `OPEN_WEPIG_SECRET` 凭证（在微猪平台获取）
+3. 使用哪些编码 harness（Claude Code、Cursor、Gemini CLI、Codex CLI、OpenCode、Antigravity、GitHub Copilot CLI —— 或「全部可用的」）
 
-**macOS / Linux** — run this shell command (it is interactive; answer the prompts):
+## Step 2 — 运行安装脚本（注入 Gitee 源）
+
+安装脚本的仓库源由环境变量注入，国内直接指定 Gitee 镜像：
+
+**macOS / Linux** — 运行以下命令（交互式，按提示作答）：
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/wepigcn/open-wepig-skills/main/install.sh)
+OPEN_WEPIG_REPO_HOST=gitee.com OPEN_WEPIG_REPO_OWNER=wepig \
+  bash <(curl -fsSL https://gitee.com/wepig/open-wepig-skills/raw/main/install.sh)
 ```
 
-**Windows (PowerShell)**:
+**Windows（PowerShell 7+）**：
 
 ```powershell
-irm https://raw.githubusercontent.com/wepigcn/open-wepig-skills/main/install.ps1 | iex
+$env:OPEN_WEPIG_REPO_HOST = "gitee.com"; $env:OPEN_WEPIG_REPO_OWNER = "wepig"
+irm https://gitee.com/wepig/open-wepig-skills/raw/main/install.ps1 | iex
 ```
 
-The script will:
-- Clone the repo to `~/.local/share/open-wepig-skills` (Linux/macOS) or `%LOCALAPPDATA%\open-wepig-skills` (Windows)
-- Prompt for `OPEN_WEPIG_APPID` and `OPEN_WEPIG_SECRET`, then persist them
-- Auto-detect installed harnesses and register the skill in each one
-- Generate the `open-wepig-cli` wrapper command
-- Run a connectivity test to verify the setup
+两个环境变量的含义：
 
-## Step 3 — Verify the install
+| 变量 | 本文取值 | 默认值（GitHub） |
+| --- | --- | --- |
+| `OPEN_WEPIG_REPO_HOST` | `gitee.com` | `github.com` |
+| `OPEN_WEPIG_REPO_OWNER` | `wepig` | `wepigcn` |
+| `OPEN_WEPIG_REPO_NAME` | `open-wepig-skills`（无需设置） | `open-wepig-skills` |
+| `OPEN_WEPIG_REPO_URL` | —（可选，整体覆盖克隆地址） | `https://github.com/wepigcn/open-wepig-skills.git` |
 
-After the script finishes, verify with:
+脚本会：
+- 把仓库克隆到 `~/.local/share/open-wepig-skills`（Linux/macOS）或 `%LOCALAPPDATA%\open-wepig-skills`（Windows）
+- 提示输入 `OPEN_WEPIG_APPID` 与 `OPEN_WEPIG_SECRET` 并持久化
+- 自动探测已安装的 harness，并在各自位置注册 skill
+- 生成 `open-wepig-cli` 命令
+- 跑一次连通性实测
+
+## Step 3 — 验证安装
+
+脚本结束后验证：
 
 ```bash
 open-wepig-cli services
 ```
 
-Expected output: a JSON list of available Wepig services. If you see an error, check that the env vars are set:
+预期输出：可用的微猪服务 JSON 列表。报错时先检查环境变量是否已生效：
 
 ```bash
 echo $OPEN_WEPIG_APPID
 echo $OPEN_WEPIG_SECRET
 ```
 
-If they are empty, source the env file:
+为空则先载入 env 文件：
 
 ```bash
 source ~/.config/open-wepig/env
 ```
 
-Then re-run `open-wepig-cli services`.
+再重跑 `open-wepig-cli services`。
 
-## Step 4 — Harness-specific verification
+## Step 4 — 各 harness 验证
 
-| Harness | How to verify |
+| Harness | 验证方式 |
 | --- | --- |
-| Claude Code | Run `/skills` — `open-wepig` should appear in the list |
-| Cursor | Open a chat, type `@open-wepig` — it should autocomplete |
-| Gemini CLI | Run `gemini extensions list` — `open-wepig` should be listed |
-| Codex CLI | Run `/plugins` inside a session — `open-wepig` should be listed |
-| OpenCode | Check `~/.config/opencode/opencode.json` — should contain a `file://...open-wepig-skills` plugin entry |
+| Claude Code | 运行 `/skills` — 列表中应出现 `open-wepig` |
+| Cursor | 打开对话输入 `@open-wepig` — 应可自动补全 |
+| Gemini CLI | 运行 `gemini extensions list` — 应列出 `open-wepig` |
+| Codex CLI | 会话内运行 `/plugins` — 应列出 `open-wepig` |
+| OpenCode | 检查 `~/.config/opencode/opencode.json` — 应含 `file://...open-wepig-skills` 插件项 |
 
-## Troubleshooting
+## 常见问题
 
-- **`open-wepig-cli: command not found`** — Your shell may not have sourced the new PATH. Run `source ~/.zshrc` (zsh) or `source ~/.bashrc` (bash), then retry.
-- **401 / auth errors** — Double-check `OPEN_WEPIG_APPID` and `OPEN_WEPIG_SECRET` are correct.
-- **Skill not visible in harness** — Re-run the install script and select the specific harness, or follow the manual registration steps in the [README](https://github.com/wepigcn/open-wepig-skills#readme).
-- **Windows execution policy error** — Run `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` first.
+- **`open-wepig-cli: command not found`** — 当前 shell 未加载新 PATH。执行 `source ~/.zshrc`（zsh）或 `source ~/.bashrc`（bash）后重试。
+- **401 / 鉴权失败** — 核对 `OPEN_WEPIG_APPID` 与 `OPEN_WEPIG_SECRET`。
+- **harness 中看不到 skill** — 重跑安装脚本并单选该 harness，或参考 [README](https://gitee.com/wepig/open-wepig-skills#readme) 的手动注册步骤。
+- **Gitee 拉取失败 / 404** — Gitee 镜像同步可能滞后，确认 `OPEN_WEPIG_REPO_HOST=gitee.com`、`OPEN_WEPIG_REPO_OWNER=wepig` 且分支为 `main`；仍失败可改用 GitHub 源（见 [install-guide_en.md](install-guide_en.md)）。
+- **Windows 执行策略报错** — 先运行 `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`。
 
-## Uninstall
+## 卸载
 
 ```bash
 # macOS / Linux
@@ -86,5 +103,5 @@ powershell -ExecutionPolicy Bypass -File install.ps1 uninstall
 
 ---
 
-Once installation is complete, tell the user:
-> open-wepig-skills is installed. You can now ask me questions about your Wepig pig farm data — breeding records, pregnancy tracking, farrowing, weaning, semen inventory, and more.
+安装完成后，告知用户：
+> open-wepig-skills 已安装。现在可以直接问我你的微猪猪场数据 —— 配种记录、妊娠跟踪、分娩、断奶、精液库存等。

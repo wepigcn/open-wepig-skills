@@ -6,13 +6,15 @@
 
 ## 安装
 
+> 国内推荐使用 **Gitee 镜像**（`gitee.com/wepig/open-wepig-skills`）。海外网络可用 GitHub 官方仓库，见 [English README](README_en.md)。
+
 ### 方式一：一键脚本（推荐）
 
 **让 AI 助手帮你安装** — 将以下提示词粘贴到 Claude Code、Cursor、Qoder 或任意 AI 编程助手中：
 
 ```
 请按照以下安装指南，帮我安装 open-wepig-skills：
-https://raw.githubusercontent.com/wepigcn/open-wepig-skills/main/docs/install-guide.md
+https://gitee.com/wepig/open-wepig-skills/raw/main/docs/install-guide.md
 ```
 
 AI 助手会读取安装指南、向你确认凭证和目标平台，然后自动完成整个安装流程。
@@ -22,30 +24,42 @@ AI 助手会读取安装指南、向你确认凭证和目标平台，然后自�
 **macOS / Linux：**
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/wepigcn/open-wepig-skills/main/install.sh)
+OPEN_WEPIG_REPO_HOST=gitee.com OPEN_WEPIG_REPO_OWNER=wepig \
+  bash <(curl -fsSL https://gitee.com/wepig/open-wepig-skills/raw/main/install.sh)
 ```
 
-**Windows（PowerShell）：**
+**Windows（PowerShell 7+）：**
 
 ```powershell
-irm https://raw.githubusercontent.com/wepigcn/open-wepig-skills/main/install.ps1 | iex
+$env:OPEN_WEPIG_REPO_HOST = "gitee.com"; $env:OPEN_WEPIG_REPO_OWNER = "wepig"
+irm https://gitee.com/wepig/open-wepig-skills/raw/main/install.ps1 | iex
 ```
+
+脚本默认从 GitHub 官方仓库拉取；上面两个环境变量把仓库源切到 Gitee 镜像。可注入的变量：
+
+| 变量 | 说明 | 默认值 |
+| --- | --- | --- |
+| `OPEN_WEPIG_REPO_HOST` | 仓库主机 | `github.com` |
+| `OPEN_WEPIG_REPO_OWNER` | 仓库所有者 | `wepigcn` |
+| `OPEN_WEPIG_REPO_NAME` | 仓库名 | `open-wepig-skills` |
+| `OPEN_WEPIG_REPO_URL` | 整体覆盖克隆地址 | `https://<host>/<owner>/<name>.git` |
 
 ### 方式二：Claude Code plugin marketplace
 
 ```text
-/plugin marketplace add wepigcn/open-wepig-skills
+/plugin marketplace add https://gitee.com/wepig/open-wepig-skills.git
 /plugin install open-wepig@open-wepig-skills
 ```
 
 > marketplace 安装只让 Claude Code 识别 skill，**仍需再跑一次方式一**配置鉴权。
+> 另外，仓库内的 `.claude-plugin/marketplace.json` 插件地址指向 GitHub 官方仓库；国内网络拉取失败时请改用方式一。
 
 ### 方式三：手动 clone
 
 **macOS / Linux：**
 
 ```bash
-git clone https://github.com/wepigcn/open-wepig-skills.git ~/.local/share/open-wepig-skills
+git clone https://gitee.com/wepig/open-wepig-skills.git ~/.local/share/open-wepig-skills
 # 鉴权（写入 ~/.zshrc 持久化）
 export OPEN_WEPIG_APPID=你的appid
 export OPEN_WEPIG_SECRET=你的secret
@@ -56,12 +70,12 @@ node ~/.local/share/open-wepig-skills/bin/open-cli.mjs services
 **Windows：**
 
 ```powershell
-git clone https://github.com/wepigcn/open-wepig-skills.git $env:LOCALAPPDATA\open-wepig-skills
+git clone https://gitee.com/wepig/open-wepig-skills.git $env:LOCALAPPDATA\open-wepig-skills
 # 鉴权
 $env:OPEN_WEPIG_APPID = "你的appid"
 $env:OPEN_WEPIG_SECRET = "你的secret"
 # 直接用绝对路径调用，或跑一次 install.ps1 生成 open-wepig-cli 命令
-node $env:LOCALAPPDATA\open-wepig-skills\scripts\open-cli.mjs services
+node $env:LOCALAPPDATA\open-wepig-skills\bin\open-cli.mjs services
 ```
 
 ## 各平台自动安装/更新命令

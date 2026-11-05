@@ -12,7 +12,7 @@ A collection of [Skills](https://docs.claude.com/en/docs/claude-code/skills) tha
 
 ```
 Please install open-wepig-skills by following the instructions here:
-https://raw.githubusercontent.com/wepigcn/open-wepig-skills/main/docs/install-guide.md
+https://raw.githubusercontent.com/wepigcn/open-wepig-skills/main/docs/install-guide_en.md
 ```
 
 The agent will read the install guide, confirm your credentials and target harness(es), and complete the full installation for you.
@@ -30,6 +30,15 @@ bash <(curl -fsSL https://raw.githubusercontent.com/wepigcn/open-wepig-skills/ma
 ```powershell
 irm https://raw.githubusercontent.com/wepigcn/open-wepig-skills/main/install.ps1 | iex
 ```
+
+> The repository source is injected via environment variables; the defaults below already target the GitHub upstream. Users in mainland China can switch to the Gitee mirror with `OPEN_WEPIG_REPO_HOST=gitee.com OPEN_WEPIG_REPO_OWNER=wepig` (see [中文 README](README.md)).
+
+| Variable | Meaning | Default |
+| --- | --- | --- |
+| `OPEN_WEPIG_REPO_HOST` | repository host | `github.com` |
+| `OPEN_WEPIG_REPO_OWNER` | repository owner | `wepigcn` |
+| `OPEN_WEPIG_REPO_NAME` | repository name | `open-wepig-skills` |
+| `OPEN_WEPIG_REPO_URL` | overrides the whole clone URL | `https://<host>/<owner>/<name>.git` |
 
 ### Option 2: Claude Code plugin marketplace
 
@@ -61,7 +70,7 @@ git clone https://github.com/wepigcn/open-wepig-skills.git $env:LOCALAPPDATA\ope
 $env:OPEN_WEPIG_APPID = "your_appid"
 $env:OPEN_WEPIG_SECRET = "your_secret"
 # Call directly, or run install.ps1 to generate the open-wepig-cli command
-node $env:LOCALAPPDATA\open-wepig-skills\scripts\open-cli.mjs services
+node $env:LOCALAPPDATA\open-wepig-skills\bin\open-cli.mjs services
 ```
 
 ## Harness support

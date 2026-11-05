@@ -11,9 +11,13 @@
 $ErrorActionPreference = "Stop"
 
 # ---------- 常量 ----------
-$REPO_URL    = "https://github.com/wepigcn/open-wepig-skills.git"
-$REPO_OWNER  = "wepigcn"
-$REPO_NAME   = "open-wepig-skills"
+# 仓库源可注入（国内镜像用 gitee，国际用 github）：
+#   $env:OPEN_WEPIG_REPO_HOST="gitee.com"; $env:OPEN_WEPIG_REPO_OWNER="wepig"
+# 也可整体覆盖 $env:OPEN_WEPIG_REPO_URL。
+$REPO_HOST   = if ($env:OPEN_WEPIG_REPO_HOST)  { $env:OPEN_WEPIG_REPO_HOST }  else { "github.com" }
+$REPO_OWNER  = if ($env:OPEN_WEPIG_REPO_OWNER) { $env:OPEN_WEPIG_REPO_OWNER } else { "wepigcn" }
+$REPO_NAME   = if ($env:OPEN_WEPIG_REPO_NAME)  { $env:OPEN_WEPIG_REPO_NAME }  else { "open-wepig-skills" }
+$REPO_URL    = if ($env:OPEN_WEPIG_REPO_URL)   { $env:OPEN_WEPIG_REPO_URL }   else { "https://$REPO_HOST/$REPO_OWNER/$REPO_NAME.git" }
 $MARKETPLACE_NAME = "open-wepig-skills"
 $SKILL_NAME  = "open-wepig"
 $CMD_NAME    = "open-wepig-cli"
@@ -51,6 +55,12 @@ function Usage {
   Write-Host ""
   Write-Host "说明：Claude Code / Cursor 支持项目级 skill；Copilot / Antigravity /"
   Write-Host "      Gemini / Codex / OpenCode 本质为全局插件，项目模式下仍会安装但全局生效。"
+  Write-Host ""
+  Write-Host "仓库源（默认 GitHub 官方仓库）可用环境变量注入："
+  Write-Host "  OPEN_WEPIG_REPO_HOST  默认 github.com，国内镜像用 gitee.com"
+  Write-Host "  OPEN_WEPIG_REPO_OWNER 默认 wepigcn，gitee 镜像为 wepig"
+  Write-Host "  OPEN_WEPIG_REPO_NAME  默认 open-wepig-skills"
+  Write-Host "  OPEN_WEPIG_REPO_URL   整体覆盖克隆地址"
 }
 
 # ---------- 鉴权 ----------
@@ -165,7 +175,7 @@ function Sync-Repo {
     Write-Host "已存在仓库，拉取更新..."
     git -C $INSTALL_DIR pull --ff-only
   } else {
-    Write-Host "克隆仓库..."
+    Write-Host "克隆仓库 $REPO_URL ..."
     git clone $REPO_URL $INSTALL_DIR
   }
 }

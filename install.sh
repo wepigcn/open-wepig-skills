@@ -8,9 +8,13 @@
 
 set -euo pipefail
 
-REPO_URL="https://github.com/wepigcn/open-wepig-skills.git"
-REPO_OWNER="wepigcn"
-REPO_NAME="open-wepig-skills"
+# 仓库源可注入（国内镜像用 gitee，国际用 github）：
+#   OPEN_WEPIG_REPO_HOST=gitee.com OPEN_WEPIG_REPO_OWNER=wepig bash install.sh
+# 也可整体覆盖 OPEN_WEPIG_REPO_URL。
+REPO_HOST="${OPEN_WEPIG_REPO_HOST:-github.com}"
+REPO_OWNER="${OPEN_WEPIG_REPO_OWNER:-wepigcn}"
+REPO_NAME="${OPEN_WEPIG_REPO_NAME:-open-wepig-skills}"
+REPO_URL="${OPEN_WEPIG_REPO_URL:-https://$REPO_HOST/$REPO_OWNER/$REPO_NAME.git}"
 MARKETPLACE_NAME="open-wepig-skills"
 SKILL_NAME="open-wepig"          # skill / plugin / 扩展名
 CMD_NAME="open-wepig-cli"        # 生成的 PATH 命令名
@@ -59,6 +63,13 @@ usage() {
 
 说明：Claude Code / Cursor 支持项目级 skill；Copilot / Antigravity /
       Gemini / Codex / OpenCode 本质为全局插件，项目模式下仍会安装但全局生效。
+
+仓库源（默认 GitHub 官方仓库）可用环境变量注入：
+  OPEN_WEPIG_REPO_HOST  默认 github.com，国内镜像用 gitee.com
+  OPEN_WEPIG_REPO_OWNER 默认 wepigcn，gitee 镜像为 wepig
+  OPEN_WEPIG_REPO_NAME  默认 open-wepig-skills
+  OPEN_WEPIG_REPO_URL   整体覆盖克隆地址
+例：OPEN_WEPIG_REPO_HOST=gitee.com OPEN_WEPIG_REPO_OWNER=wepig bash install.sh
 EOF
 }
 
@@ -188,7 +199,7 @@ sync_repo() {
   if [[ -d "$INSTALL_DIR/.git" ]]; then
     echo "已存在仓库，拉取更新..."; git -C "$INSTALL_DIR" pull --ff-only
   else
-    echo "克隆仓库..."; git clone "$REPO_URL" "$INSTALL_DIR"
+    echo "克隆仓库 $REPO_URL ..."; git clone "$REPO_URL" "$INSTALL_DIR"
   fi
 }
 
